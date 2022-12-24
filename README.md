@@ -41,7 +41,7 @@ Here's example of [thread](thread-example.json) and [user](user-example.json).
 
     xenforo [URL]...
 
-Script downloads pages of threads and users and writes them in files. Files are named by its id but user files start with 'm-'.
+Script downloads pages of threads and users and writes them in files. Files are named by their id's, but user files start with 'm-'.
 
 Download forum into current directory using 4 processes
 
