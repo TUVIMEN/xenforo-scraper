@@ -1,0 +1,210 @@
+#!/bin/bash
+# by Dominik Stanisław Suchora <suchora.dominik7@gmail.com>
+# License: GNU GPLv3
+
+shopt -s extglob
+
+declare maxprocs='1' url _cookies
+
+IFS=$'\n'
+
+ucurl() {
+    curl -L -g -s -b "$_cookies" --user-agent 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/5.15.2 Chrome/87.0.4280.144 Safari/537.36' -H 'Accept-Encoding: gzip, deflate' --compressed "$@"
+}
+
+get_user() {
+    local -r rh="${1%/\?*}"
+    local -r id="${rh##http[s]://+(+([[:alnum:]]).)+([[:alpha:]])/*members/?(*.)}"
+    [ -e "m-$id" ] && return
+    echo "$1" >/dev/stderr
+    local -r t="$(ucurl -b "$2" "$1" | jq -r '.html.content')"
+
+    {
+    echo "$id"
+    echo "$(hgrep 'a +href="/misc/location-info.*" @p"%i\n"' <<< "$t")" #location
+    echo "$(hgrep 'img +src @p"%(src)a\n"' <<< "$t" | sed 's#^/[^/]#'"$url"'\0#;s#^//#https://#;s/?.*//')" #avatar
+    echo "$(sed -n '/<div class="memberProfileBanner memberTooltip-header.*url(/{s#.*url(##;s#^/[^/]#'"$url"'\0#;s#^//#https://#;s/?.*//;p;q}' <<< "$t")" #background
+    echo "$(hgrep 'dl +class="pairs pairs--inline" @m">Joined<"; time +datetime @p"%(datetime)a\n"' <<< "$t")" #joined
+    echo "$(hgrep 'dl +class="pairs pairs--inline" @m">Last seen<"; time +datetime @p"%(datetime)a\n"' <<< "$t")" #lastseen
+    echo "$(hgrep 'span +class="userTitle" @p"%i\n"' <<< "$t")" #title
+    echo "$(hgrep 'h4 class="memberTooltip-name"; a; .* @M"<" @p"%i\n"' <<< "$t")" #name
+    echo "$(hgrep 'em; a +href @p"%(href)a\n"' <<< "$t")" #forum
+    echo "$(hgrep 'dl @m"<dt>Messages</dt>"; dd; .* @M"<" @p"%i\n"' <<< "$t" | sed -n '/[0-9]/{s/[,\t]//gp;q}')" #messages
+    echo "$(hgrep 'dl @m"<dt.*>Reaction.*</dt>"; dd; .* @M"<" @p"%i\n"' <<< "$t" | sed -n '/[0-9]/{s/[,\t]//gp;q}')" #reactionscore
+    echo "$(hgrep 'dl @m"<dt title=".*">Points</dt>"; dd; .* @M"<" @p"%i\n"' <<< "$t" | sed -n '/[0-9]/{s/[,\t]//gp;q}')" #points
+    } | jq -RnMc '
+        .["id"]=input |
+        .["location"]=input |
+        .["avatar"]=input |
+        .["background"]=input |
+        .["joined"]=input |
+        .["lastseen"]=input |
+        .["title"]=input |
+        .["name"]=input |
+        .["forum"]=input |
+        .["messages"]=input |
+        .["reactionscore"]=input |
+        .["points"]=input' > "m-$id"
+}
+
+get_thread() {
+    local -r rh="${1%/}"
+    local -r id="${rh##http[s]://+(+([[:alnum:]]).)+([[:alpha:]])/*threads/?(*.)}"
+    [ -e "$id" ] && return
+    echo "$1"
+    local t="$(ucurl -D- "$1")"
+    local t2
+    local -r cookies="$(sed -n '/^<!DOCTYPE html>/q; /^[sS]et-[cC]ookie: /{s/Set-Cookie: //i;p}' <<< "$t" | sed ':x;s/\r//g;$!{N;s/\n/\;/;bx}')"
+    local next
+
+    {
+    echo "$1" #link
+    echo "$id" #id
+    echo "$(hgrep 'h1 +class="p-title-value" @p"%i\n"' <<< "$t" | sed ':x; s/<[^>]*>//g; $!{N;s/\n/ /;bx}')" #title
+    echo "$(hgrep 'div +class="p-description"; .* +data-user-id @p"%(data-user-id)a\n"' <<< "$t")" #user_id
+    echo "$(hgrep 'div +class="p-description"; .* +data-user-id; .* @M"<" @p"%i\n"' <<< "$t")" #user
+    echo "$(hgrep 'div +class="p-description"; time +datetime @p"%(datetime)a\n"' <<< "$t")" # date
+    echo "$(hgrep 'ul +class="p-breadcrumbs "; span @p"%i/"' <<< "$t")" #path
+    echo "$(hgrep 'span +class="js-tagList"; a +class="tagItem tagItem--.*" @p"%i"' <<< "$t" | sed ':x; s/\t//g; /^$/d; $!{N;s/\n/|/;bx}; s/|$//; s/|\+/|/g')" #tags
+    echo "$(hgrep 'form +data-xf-init="poll-block ajax-submit"; h2 +class="block-header" @p"%i\n"' <<< "$t" | sed 's/\t//g; s/<[^>]*>//g; s/^ *//; s/ *$//; /^$/d;')" #poll.title
+    echo "$(paste -d '' <(hgrep 'form +data-xf-init="poll-block ajax-submit"; h3 +class="pollResult-response" @p"%i\n"' <<< "$t") <(hgrep 'form +data-xf-init="poll-block ajax-submit"; span +class="pollResult-votes" @p"%i\n"' <<< "$t" | sed 's/\t//g; s/<[^>]*>//g; s/^ *//; s/ *$//; /^$/d; s/^.* //') | sed ':x;$!{N;s/\n/\t/;bx}')" #poll.answers
+    local -r xfToken="$(hgrep 'html +data-csrf @p"%(data-csrf)a\n"' <<< "$t")" #hgrep 'input +name="_xfToken" +value @p"%(value)a\n"' <<< "$t" | head -n1
+
+    while :
+    do
+        for i in $(tr -d '\r\n\t\a' <<< "$t" | hgrep 'article +id @p"%A\n"')
+        do
+            {
+            hgrep 'h4 +class="message-name"; .* +data-user-id @p"%(data-user-id)a\n", h4 +class="message-name"; .* +data-user-id; .* @M"<" @p"%i\n"' <<< "$i" #user_id user
+            get_user "$(hgrep 'h4 +class="message-name"; a +data-user-id +href @p"'"$url"'%(href)a?tooltip=true&_xfWithData=1&_xfToken='"$xfToken"'&_xfResponseType=json\n"' <<< "$i")" "$cookies"
+            t2="$(hgrep 'span +id="post-[0-9]*" @p"%(id)a\n"' <<< "$i")"
+            echo "${t2#post-}" #id
+            echo "$(hgrep 'time +datetime @p"%(datetime)a\n"' <<< "$i" | head -n1)" #date
+            echo "$(hgrep 'div +class="bbWrapper" @p"%i\n"' <<< "$i")" #text
+            echo "$(hgrep 'ul +class="attachmentList" @p"%i\n"' <<< "$i")" #attachments
+            t2="$(hgrep 'a +class="reactionsBar-link" +href @p"'"$url"'%(href)a\n"' <<< "$i")"
+            if [ -n "$t2" ] #reactions
+            then
+                echo "$(for j in $(ucurl -b "$cookies" "$t2?_xfRequestUri=&_xfWithData=1&_xfToken=$xfToken&_xfResponseType=json" | jq -r .html.content | tr -d '\n\t' | hgrep 'div +class="contentRow"'); do hgrep '.* +class="username " +data-user-id @p"%(data-user-id)a\n", .* +class="username " +data-user-id; .* @M"<" @p"%i\n", time +class="u-dt" +datetime @p"%(datetime)a\n", span +class="reaction .*"; img +title @p"%(title)a\n"' <<< "$j" | sed ':x; $!{N;s/\n/|/;bx}'; done | sed ':x; $!{N;s/\n/^/;bx}')"
+            else
+                echo
+            fi
+            } | sed ':x;$!{N;s/\n/\t/;bx}'
+        done
+
+        next="$(hgrep 'div +class="block-outer"; a +class="pageNav-jump pageNav-jump--next" +href @p"'"$url"'%(href)a\n"' <<< "$t" | head -n1)"
+        grep -q '/page-[0-9]*$' <<< "$next" || break
+        t="$(ucurl -b "$cookies" "$next")"
+    done
+    } | jq -RnMcs '
+        (inputs | split("\n")) as $lines |
+        .["link"]=$lines[0] |
+        .["id"]=$lines[1] |
+        .["title"]=$lines[2] |
+        .["user_id"]=$lines[3] |
+        .["user"]=$lines[4] |
+        .["date"]=$lines[5] |
+        .["path"]=$lines[6] |
+        .["tags"]=($lines[7] | split("|")) |
+        .["poll"]=($lines[8:10] | {
+            ("title"):.[0],
+            ("answers"):(.[1] | split("\t") | map(split("") | {
+                ("option"):.[0],
+                ("votes"):.[1]
+            }))
+        }) |
+        .["posts"]=($lines[10:-1] | map(split("\t") | {
+            ("user_id"):.[0],
+            ("user"):.[1],
+            ("id"):.[2],
+            ("date"):.[3],
+            ("text"):.[4],
+            ("attachments"):.[5],
+            ("reactions"):(.[6] | split("^") | map(split("|") | {
+                ("user_id"):.[0],
+                ("user"):.[1],
+                ("date"):.[2],
+                ("reaction"):.[3]
+            }))
+        }))' > "$id"
+}
+
+get_forum() {
+    local t next
+    t="$(ucurl "$1")"
+    while :
+    do
+        for j in $(hgrep 'div +class="structItem-title"; a +href=".*/threads/.*/" @p"'"$url"'%(href)a\n"' <<< "$t")
+        do
+            [ "$(jobs | wc -l)" -gt "$maxprocs" ] && wait %%
+            get_thread "$j" &
+        done
+
+        next="$(hgrep 'div +class="block-outer"; a +class="pageNav-jump pageNav-jump--next" +href @p"'"$url"'%(href)a\n"' <<< "$t")"
+        echo "$next"
+        grep -q '/page-[0-9]*$' <<< "$next" || break
+        t="$(ucurl "$next")"
+    done
+}
+
+get_tag() {
+    local t next
+    t="$(ucurl "$1")"
+    while :
+    do
+        for j in $(hgrep 'div +class="contentRow "; a +href=".*/threads/.*/" @p"'"$url"'%(href)a\n"' <<< "$t")
+        do
+            [ "$(jobs | wc -l)" -gt "$maxprocs" ] && wait %%
+            get_thread "$j" &
+        done
+
+        next="$(hgrep 'div +class="block-outer block-outer--after"; a +class="pageNav-jump pageNav-jump--next" +href @p"'"$url"'%(href)a\n"' <<< "$t")"
+        echo "$next"
+        grep -q '/page-[0-9]*$' <<< "$next" || break
+        t="$(ucurl "$next")"
+    done
+}
+
+usage() {
+    printf '%s [OPTION]... [URL]...\n' "${0##*/}"
+    printf 'Download, convert to json and save xenforo forums from URL.\n\n'
+    printf 'Options:\n  -d,\t--dir DIR\t\tchange directory to DIR\n'
+    printf '  -p,\t--max-procs NUM\t\tset number of processes to run at a time\n'
+    printf '  -b,\t--cookie DATA|FILENAME\tpass cookie to curl\n'
+    printf '  -t,\t--thread URL\t\tpass URL as thread link\n'
+    printf '  -T,\t--tag URL\t\tpass URL as tag link\n'
+    printf '  -f,\t--forum URL\t\tpass URL as forum link\n'
+    printf '  -h,\t--help\t\t\tshow this message\n'
+}
+
+[ "$#" -eq 0 ] && { usage >&2; exit 1; }
+
+while [ "$#" -gt 0 ]
+do
+    case "$1" in
+        -d|--dir) cd "$2" || continue; shift;;
+        -t|--thread) get_thread "$2"; shift;;
+        -f|--forum) get_forum "$2"; shift;;
+        -T|--tag) get_tag "$2"; shift;;
+        -b|--cookie) _cookies="$2"; shift;;
+        -p|--max-procs) maxprocs="$2"; shift;;
+        -h|--help) usage >&2; exit;;
+        -*) usage >&2; exit 1;;
+        *) break;;
+    esac
+    shift
+done
+
+while [ "$#" -gt 0 ]
+do
+    url="$(sed -E 's/(http[s]:\/\/([[:alnum:]]+\.)+[[:alpha:]]+).*/\1/' <<< "$1")"
+    case "$1" in
+        http[s]://+(+([[:alnum:]]).)+([[:alpha:]])/threads/*|http[s]://+(+([[:alnum:]]).)+([[:alpha:]])/forum?([s])/threads/*)
+            get_thread "$1";;
+        http[s]://+(+([[:alnum:]]).)+([[:alpha:]])/forum?([s])/forums/*|http[s]://+(+([[:alnum:]]).)+([[:alpha:]])/forums/*)
+            get_forum "$1";;
+        http[s]://+(+([[:alnum:]]).)+([[:alpha:]])/tags/*)
+            get_tag "$1";;
+    esac
+    shift
+done
