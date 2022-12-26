@@ -14,7 +14,7 @@ ucurl() {
 
 get_user() {
     local -r rh="${1%/\?*}"
-    local -r id="${rh##http[s]://+(+([[:alnum:]]).)+([[:alpha:]])/*members/?(*.)}"
+    local -r id="${rh##http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/*members/?(*.)}"
     [ -e "m-$id" ] && return
     echo "$1" >/dev/stderr
     local -r t="$(ucurl -b "$2" "$1" | jq -r '.html.content')"
@@ -49,7 +49,7 @@ get_user() {
 
 get_thread() {
     local -r rh="${1%/}"
-    local -r id="${rh##http[s]://+(+([[:alnum:]]).)+([[:alpha:]])/*threads/?(*.)}"
+    local -r id="${rh##http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/*threads/?(*.)}"
     [ -e "$id" ] && return
     echo "$1"
     local t="$(ucurl -D- "$1")"
@@ -197,13 +197,13 @@ done
 
 while [ "$#" -gt 0 ]
 do
-    url="$(sed -E 's/(http[s]:\/\/([[:alnum:]]+\.)+[[:alpha:]]+).*/\1/' <<< "$1")"
+    url="$(sed -E 's/(http[s]:\/\/([[:alnum:]-]+\.)+[[:alpha:]]+).*/\1/' <<< "$1")"
     case "$1" in
-        http[s]://+(+([[:alnum:]]).)+([[:alpha:]])/threads/*|http[s]://+(+([[:alnum:]]).)+([[:alpha:]])/forum?([s])/threads/*)
+        http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/threads/*|http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/forum?([s])/threads/*)
             get_thread "$1";;
-        http[s]://+(+([[:alnum:]]).)+([[:alpha:]])/forum?([s])/forums/*|http[s]://+(+([[:alnum:]]).)+([[:alpha:]])/forums/*)
+        http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/forum?([s])/forums/*|http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/forums/*)
             get_forum "$1";;
-        http[s]://+(+([[:alnum:]]).)+([[:alpha:]])/tags/*)
+        http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/tags/*)
             get_tag "$1";;
     esac
     shift
