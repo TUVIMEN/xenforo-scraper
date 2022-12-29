@@ -4,7 +4,7 @@
 
 shopt -s extglob
 
-declare maxprocs='1' url _cookies
+declare maxprocs='1' url _cookies old
 
 IFS=$'\n'
 
@@ -165,6 +165,91 @@ get_tag() {
     done
 }
 
+get_old_thread() {
+    local -r rh="${1%/}"
+    local -r id="${rh##http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/*threads/?(*.)}"
+    [ -e "$id" ] && return
+    echo "$1"
+    local t="$(ucurl "$1")" t2 next
+
+    {
+    echo "$1" #link
+    echo "$id" #id
+    echo "$(hgrep 'div +class="titleBar"; h1 @p"%i\n"' <<< "$t" | sed ':x; s/<[^>]*>//g; $!{N;s/\n/ /;bx}')" #title
+    echo "$(hgrep 'p +id="pageDescription"; a +class="username" +href @p"%(href)a\n"' <<< "$t" | sed 's/^.*[/.]\([0-9]\+\)/\1/; s/[^0-9]$//')" #user_id
+    echo "$(hgrep 'p +id="pageDescription"; a +class="username" @p"%i\n"' <<< "$t")" #user
+    echo "$(hgrep 'p +id="pageDescription"; span +class="DateTime" @p"%i\n"' <<< "$t")" #date
+    echo "$(hgrep 'span +class="crumbs"; span +itemprop="title" @p"%i/"' <<< "$t")" #path
+    echo "$(hgrep 'ul +class="tagList"; a +class="tag" @p"%i|"' <<< "$t" | sed 's/<[^>]*>[^<]*<\/[^>]*>//g; s/|$//')" #tags
+
+    while :
+    do
+        for i in $(tr -d '\n\t' <<< "$t" | hgrep 'ol +id="messageList"; li +id="post-[0-9]*" +data-author @l[1]')
+        do
+            {
+            echo "$(hgrep 'li +data-author @l[0] @p"%(data-author)a\n"' <<< "$i")" #user
+            echo "$(hgrep 'div +class="messageUserBlock.*"; span +class="img m" +style @p"%(style)a\n"' <<< "$i" | sed 's#^.*/avatars/m/##; s#/.*##')" #user_id
+            echo "$(hgrep 'div +class="messageUserBlock.*"; h3 +class="userText"; em +class="userTitle" +itemprop="title" @p"%i\n"' <<< "$i")" #user_title
+            echo "$(hgrep 'div +class="messageUserBlock.*"; h3 +class="userText"; em +class="userBanner.*" +itemprop="title"; strong @p"%i\n"' <<< "$i")" #user_banner
+            echo "$(paste -d/ <(hgrep 'div +class='extraUserInfo'; dl +class="pairsJustified"; dt @p"%i\n"' <<< "$i") <(hgrep 'div +class='extraUserInfo'; dl +class="pairsJustified"; dd; .* @M"<" @p"%i\n"' <<< "$i") | sed ':x;$!{N;s/\n/|/;bx}')" #user_extra
+            echo "$(hgrep 'div +class="messageUserBlock.*"; span +class="img m" +style @p"'"$url"'%(style)a\n"' <<< "$i" | sed "s/?[0-9]*')//; s/background-image: url('/\//")" #avatar
+            t2="$(hgrep 'li +data-author @l[0] +id="post-[0-9]*" @p"%(id)a\n"' <<< "$i")"
+            echo "${t2#post-}" #id
+            echo "$(hgrep 'div +class="messageContent"; article @p"%i\n"' <<< "$i")"#text
+            } | sed ':x;$!{N;s/\n/\t/;bx}'
+        done
+
+        next="$(hgrep 'nav; a +class="[nt]ext.*" +href @m"&gt;" @p"'"$url"'/%(href)a\n"' <<< "$t" | tail -n1)"
+        grep -q '/page-[0-9]*$' <<< "$next" || break
+        t="$(ucurl "$next")"
+    done
+    } | jq -RnMcs '
+        (inputs | split("\n")) as $lines |
+        .["link"]=$lines[0] |
+        .["id"]=$lines[1] |
+        .["title"]=$lines[2] |
+        .["user_id"]=$lines[3] |
+        .["user"]=$lines[4] |
+        .["date"]=$lines[5] |
+        .["path"]=$lines[6] |
+        .["tags"]=($lines[7] | split("|")) |
+        .["posts"]=($lines[8:-1] | map(split("\t") | {
+            ("user"):.[0],
+            ("user_id"):.[1],
+            ("user_title"):.[2],
+            ("user_banner"):.[3],
+            ("user_extra"):(.[4] | split("|") | map(split("/") | {
+                    ("name"):.[0],
+                    ("value"):.[1]
+            })),
+            ("avatar"):.[5],
+            ("id"):.[6],
+            ("text"):.[7]
+        }))' > "$id"
+}
+
+get_old_forum_tag() {
+    local t next
+    t="$(ucurl "$1")"
+    while :
+    do
+        for j in $(hgrep 'li +id; div +class="titleText"; h3 +class="title"; a +href @p"'"$url"'/%(href)a\n"' <<< "$t")
+        do
+            [ "$(jobs | wc -l)" -gt "$maxprocs" ] && wait %%
+            get_old_thread "$j" &
+        done
+
+        next="$(hgrep 'nav; a +class="[nt]ext.*" +href @m"&gt;" @p"'"$url"'/%(href)a\n"' <<< "$t" | tail -n1)"
+        echo "$next"
+        grep -q '/page-[0-9]*$' <<< "$next" || break
+        t="$(ucurl "$next")"
+    done
+}
+
+baseurl() {
+    sed -E 's/(http[s]:\/\/([[:alnum:]-]+\.)+[[:alpha:]]+).*/\1/' <<< "$1"
+}
+
 usage() {
     printf '%s [OPTION]... [URL]...\n' "${0##*/}"
     printf 'Download, convert to json and save xenforo forums from URL.\n\n'
@@ -174,6 +259,7 @@ usage() {
     printf '  -t,\t--thread URL\t\tpass URL as thread link\n'
     printf '  -T,\t--tag URL\t\tpass URL as tag link\n'
     printf '  -f,\t--forum URL\t\tpass URL as forum link\n'
+    printf '  -o,\t--old\t\t\tuse old format\n'
     printf '  -h,\t--help\t\t\tshow this message\n'
 }
 
@@ -183,11 +269,36 @@ while [ "$#" -gt 0 ]
 do
     case "$1" in
         -d|--dir) cd "$2" || continue; shift;;
-        -t|--thread) get_thread "$2"; shift;;
-        -f|--forum) get_forum "$2"; shift;;
-        -T|--tag) get_tag "$2"; shift;;
+        -t|--thread)
+            url="$(baseurl "$1")"
+            if [ -n "$old" ]
+            then
+                get_old_thread "$2"
+            else
+                get_thread "$2"
+            fi
+            shift;;
+        -f|--forum)
+            url="$(baseurl "$1")"
+            if [ -n "$old" ]
+            then
+                get_old_forum_tag "$2"
+            else
+                get_forum "$2"
+            fi
+            shift;;
+        -T|--tag)
+            url="$(baseurl "$1")"
+            if [ -n "$old" ]
+            then
+                get_old_forum_tag "$2"
+            else
+                get_tag "$2"
+            fi
+            shift;;
         -b|--cookie) _cookies="$2"; shift;;
         -p|--max-procs) maxprocs="$2"; shift;;
+        -o|--old) old='1';;
         -h|--help) usage >&2; exit;;
         -*) usage >&2; exit 1;;
         *) break;;
@@ -197,14 +308,29 @@ done
 
 while [ "$#" -gt 0 ]
 do
-    url="$(sed -E 's/(http[s]:\/\/([[:alnum:]-]+\.)+[[:alpha:]]+).*/\1/' <<< "$1")"
+    url="$(baseurl "$1")"
     case "$1" in
         http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/threads/*|http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/forum?([s])/threads/*)
-            get_thread "$1";;
+            if [ -n "$old" ]
+            then
+                get_old_thread "$1"
+            else
+                get_thread "$1"
+            fi;;
         http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/forum?([s])/forums/*|http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/forums/*)
-            get_forum "$1";;
+            if [ -n "$old" ]
+            then
+                get_old_forum_tag "$1"
+            else
+                get_forum "$1"
+            fi;;
         http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/tags/*)
-            get_tag "$1";;
+            if [ -n "$old" ]
+            then
+                get_old_forum_tag "$1"
+            else
+                get_tag "$1"
+            fi;;
     esac
     shift
 done

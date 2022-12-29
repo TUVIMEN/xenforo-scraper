@@ -22,7 +22,7 @@ A bash script for downloading xenforo forums in json.
 
 ## Json format
 
-Here's example of [thread](thread-example.json) and [user](user-example.json).
+Here's example of [thread](thread-example.json), [old-thread](old-thread-example.json) and [user](user-example.json).
 
 ## Supported forums examples
     
@@ -32,7 +32,7 @@ Here's example of [thread](thread-example.json) and [user](user-example.json).
     https://zroadster.org/
     https://www.urban75.net/forums/
 
-## Unsupported forums examples
+## Supported old forums examples
 
     https://forums.whyweprotest.net/
     https://www.forumhouse.ru/forums
@@ -41,7 +41,7 @@ Here's example of [thread](thread-example.json) and [user](user-example.json).
 
     xenforo [URL]...
 
-Script downloads pages of threads and users and writes them in files. Files are named by their id's, but user files start with 'm-'.
+Script downloads pages of threads and users and writes them in files. Files are named by their id's, but user files start with 'm-'. Old format forums don't create user files.
 
 Download forum into current directory using 4 processes
 
@@ -50,6 +50,10 @@ Download forum into current directory using 4 processes
 Download thread by irregular thread url into DIR 
 
     xenforo -d DIR -t 'https://forum.com/abcdef/loop/'
+
+Download old format forum
+
+    xenforo -o 'https://forum.com/forums/jus.82/'
 
 Get some help
 
