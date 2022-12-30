@@ -15,9 +15,12 @@ A bash script for downloading xenforo forums in json.
 
     http[s]://forum.com/threads/*
     http[s]://forum.com/forum[s]/threads/*
+    http[s]://forum.com/*/threads/*
     http[s]://forum.com/forums/*
     http[s]://forum.com/forum[s]/forums/*
+    http[s]://forum.com/*/forums/*
     http[s]://forum.com/tags/*
+    http[s]://forum.com/*/tags/*
 
 
 ## Json format

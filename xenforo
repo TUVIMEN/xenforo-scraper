@@ -270,7 +270,7 @@ do
     case "$1" in
         -d|--dir) cd "$2" || continue; shift;;
         -t|--thread)
-            url="$(baseurl "$1")"
+            url="$(baseurl "$2")"
             if [ -n "$old" ]
             then
                 get_old_thread "$2"
@@ -279,7 +279,7 @@ do
             fi
             shift;;
         -f|--forum)
-            url="$(baseurl "$1")"
+            url="$(baseurl "$2")"
             if [ -n "$old" ]
             then
                 get_old_forum_tag "$2"
@@ -288,7 +288,7 @@ do
             fi
             shift;;
         -T|--tag)
-            url="$(baseurl "$1")"
+            url="$(baseurl "$2")"
             if [ -n "$old" ]
             then
                 get_old_forum_tag "$2"
@@ -310,21 +310,21 @@ while [ "$#" -gt 0 ]
 do
     url="$(baseurl "$1")"
     case "$1" in
-        http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/threads/*|http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/forum?([s])/threads/*)
+        http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/threads/*|http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/forum?([s])/threads/*|http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/*/threads/*)
             if [ -n "$old" ]
             then
                 get_old_thread "$1"
             else
                 get_thread "$1"
             fi;;
-        http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/forum?([s])/forums/*|http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/forums/*)
+        http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/forum?([s])/forums/*|http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/forums/*|http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/*/forums/*)
             if [ -n "$old" ]
             then
                 get_old_forum_tag "$1"
             else
                 get_forum "$1"
             fi;;
-        http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/tags/*)
+        http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/tags/*|http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/*/tags/*)
             if [ -n "$old" ]
             then
                 get_old_forum_tag "$1"
