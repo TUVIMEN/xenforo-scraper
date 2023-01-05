@@ -13,10 +13,10 @@ ucurl() {
 }
 
 get_user() {
-    local -r rh="${1%/\?*}"
-    local -r id="${rh##http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/*members/?(*.)}"
+    local -r rh="${1%%/?tooltip=true\&*}"
+    local -r id="${rh##http?(s)://+(+([[:alnum:]-]).)+([[:alpha:]])/?(*[/?])@(member?(s)|profile?(s))/?(*.)}"
     [ -e "m-$id" ] && return
-    echo "$1" >/dev/stderr
+    echo "$1" >&2
     local -r t="$(ucurl -b "$2" "$1" | jq -r '.html.content')"
 
     {
@@ -49,11 +49,12 @@ get_user() {
 
 get_thread() {
     local -r rh="${1%/}"
-    local -r id="${rh##http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/*threads/?(*.)}"
+    local -r id="${rh##http?(s)://+(+([[:alnum:]-]).)+([[:alpha:]])/?(*[/?])@(thread?(s)|topic?(s))/?(*.)}"
     [ -e "$id" ] && return
     echo "$1"
     local t="$(ucurl -D- "$1")"
-    local t2
+    local t2 url_first_delimiter='?'
+    [ -z "${1##*\?*}" ] && url_first_delimiter='&'
     local -r cookies="$(sed -n '/^<!DOCTYPE html>/q; /^[sS]et-[cC]ookie: /{s/Set-Cookie: //i;p}' <<< "$t" | sed ':x;s/\r//g;$!{N;s/\n/\;/;bx}')"
     local next
 
@@ -68,7 +69,8 @@ get_thread() {
     echo "$(hgrep 'span +class="js-tagList"; a +class="tagItem tagItem--.*" @p"%i"' <<< "$t" | sed ':x; s/\t//g; /^$/d; $!{N;s/\n/|/;bx}; s/|$//; s/|\+/|/g')" #tags
     echo "$(hgrep 'form +data-xf-init="poll-block ajax-submit"; h2 +class="block-header" @p"%i\n"' <<< "$t" | sed 's/\t//g; s/<[^>]*>//g; s/^ *//; s/ *$//; /^$/d;')" #poll.title
     echo "$(paste -d '' <(hgrep 'form +data-xf-init="poll-block ajax-submit"; h3 +class="pollResult-response" @p"%i\n"' <<< "$t") <(hgrep 'form +data-xf-init="poll-block ajax-submit"; span +class="pollResult-votes" @p"%i\n"' <<< "$t" | sed 's/\t//g; s/<[^>]*>//g; s/^ *//; s/ *$//; /^$/d; s/^.* //') | sed ':x;$!{N;s/\n/\t/;bx}')" #poll.answers
-    local -r xfToken="$(hgrep 'html +data-csrf @p"%(data-csrf)a\n"' <<< "$t")" #hgrep 'input +name="_xfToken" +value @p"%(value)a\n"' <<< "$t" | head -n1
+    local xfToken="$(hgrep 'html +data-csrf @p"%(data-csrf)a\n"' <<< "$t")"
+    [ -z "$xfToken" ] && xfToken="$(hgrep 'input +name="_xfToken" +value @p"%(value)a\n"' <<< "$t" | head -n1)"
 
     while :
     do
@@ -76,7 +78,7 @@ get_thread() {
         do
             {
             hgrep 'h4 +class="message-name"; .* +data-user-id @p"%(data-user-id)a\n", h4 +class="message-name"; .* +data-user-id; .* @M"<" @p"%i\n"' <<< "$i" #user_id user
-            get_user "$(hgrep 'h4 +class="message-name"; a +data-user-id +href @p"'"$url"'%(href)a?tooltip=true&_xfWithData=1&_xfToken='"$xfToken"'&_xfResponseType=json\n"' <<< "$i")" "$cookies"
+            get_user "$(hgrep 'h4 +class="message-name"; a +data-user-id +href @p"'"$url"'%(href)a'"$url_first_delimiter"'tooltip=true&_xfWithData=1&_xfToken='"$xfToken"'&_xfResponseType=json\n"' <<< "$i")" "$cookies"
             t2="$(hgrep 'span +id="post-[0-9]*" @p"%(id)a\n"' <<< "$i")"
             echo "${t2#post-}" #id
             echo "$(hgrep 'time +datetime @p"%(datetime)a\n"' <<< "$i" | head -n1)" #date
@@ -85,7 +87,7 @@ get_thread() {
             t2="$(hgrep 'a +class="reactionsBar-link" +href @p"'"$url"'%(href)a\n"' <<< "$i")"
             if [ -n "$t2" ] #reactions
             then
-                echo "$(for j in $(ucurl -b "$cookies" "$t2?_xfRequestUri=&_xfWithData=1&_xfToken=$xfToken&_xfResponseType=json" | jq -r .html.content | tr -d '\n\t' | hgrep 'div +class="contentRow"'); do hgrep '.* +class="username " +data-user-id @p"%(data-user-id)a\n", .* +class="username " +data-user-id; .* @M"<" @p"%i\n", time +class="u-dt" +datetime @p"%(datetime)a\n", span +class="reaction .*"; img +title @p"%(title)a\n"' <<< "$j" | sed ':x; $!{N;s/\n/|/;bx}'; done | sed ':x; $!{N;s/\n/^/;bx}')"
+                echo "$(for j in $(ucurl -b "$cookies" "$t2${url_first_delimiter}_xfRequestUri=&_xfWithData=1&_xfToken=$xfToken&_xfResponseType=json" | jq -r .html.content | tr -d '\n\t' | hgrep 'div +class="contentRow"'); do hgrep '.* +class="username " +data-user-id @p"%(data-user-id)a\n", .* +class="username " +data-user-id; .* @M"<" @p"%i\n", time +class="u-dt" +datetime @p"%(datetime)a\n", span +class="reaction .*"; img +title @p"%(title)a\n"' <<< "$j" | sed ':x; $!{N;s/\n/|/;bx}'; done | sed ':x; $!{N;s/\n/^/;bx}')"
             else
                 echo
             fi
@@ -134,7 +136,7 @@ get_forum() {
     t="$(ucurl "$1")"
     while :
     do
-        for j in $(hgrep 'div +class="structItem-title"; a +href=".*/threads/.*/" @p"'"$url"'%(href)a\n"' <<< "$t")
+        for j in $(hgrep -E 'div +class="structItem-title"; a +href=".*[/?]\(thread[s]\?\|topic[s]\?\)/.*/" @p"'"$url"'%(href)a\n"' <<< "$t")
         do
             [ "$(jobs | wc -l)" -gt "$maxprocs" ] && wait %%
             get_thread "$j" &
@@ -167,7 +169,7 @@ get_tag() {
 
 get_old_thread() {
     local -r rh="${1%/}"
-    local -r id="${rh##http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/*threads/?(*.)}"
+    local -r id="${rh##http?(s)://+(+([[:alnum:]-]).)+([[:alpha:]])/?(*[/?])@(thread?(s)|topic?(s))/?(*.)}"
     [ -e "$id" ] && return
     echo "$1"
     local t="$(ucurl "$1")" t2 next
@@ -310,21 +312,21 @@ while [ "$#" -gt 0 ]
 do
     url="$(baseurl "$1")"
     case "$1" in
-        http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/threads/*|http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/forum?([s])/threads/*|http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/*/threads/*)
+        http?(s)://+(+([[:alnum:]-]).)+([[:alpha:]])/?(*[/?])@(thread?(s)|topic?(s))/*)
             if [ -n "$old" ]
             then
                 get_old_thread "$1"
             else
                 get_thread "$1"
             fi;;
-        http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/forum?([s])/forums/*|http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/forums/*|http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/*/forums/*)
+        http?(s)://+(+([[:alnum:]-]).)+([[:alpha:]])/?(*[/?])forum?(s)/*)
             if [ -n "$old" ]
             then
                 get_old_forum_tag "$1"
             else
                 get_forum "$1"
             fi;;
-        http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/tags/*|http[s]://+(+([[:alnum:]-]).)+([[:alpha:]])/*/tags/*)
+        http?(s)://+(+([[:alnum:]-]).)+([[:alpha:]])/?(*[/?])tag?(s)/*)
             if [ -n "$old" ]
             then
                 get_old_forum_tag "$1"
