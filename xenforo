@@ -9,12 +9,13 @@ declare maxprocs='1' url _cookies old
 IFS=$'\n'
 
 ucurl() {
-    curl -L -g -s -b "$_cookies" --user-agent 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/5.15.2 Chrome/87.0.4280.144 Safari/537.36' -H 'Accept-Encoding: gzip, deflate' --compressed "$@"
+    curl -L -g -m 120 -s -b "$_cookies" --user-agent 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/5.15.2 Chrome/87.0.4280.144 Safari/537.36' -H 'Accept-Encoding: gzip, deflate' --compressed "$@"
 }
 
 get_user() {
-    local -r rh="${1%%/?tooltip=true\&*}"
-    local -r id="${rh##http?(s)://+(+([[:alnum:]-]).)+([[:alpha:]])/?(*[/?])@(member?(s)|profile?(s))/?(*.)}"
+    [ -z "$1" ] && return
+    [[ "$1" =~ ^http[s]?://([[:alnum:]-]+\.)+[[:alpha:]]+/(.*[./])?([[:digit:]]+)/\?tooltip=true\&.*$ ]] || { echo "improper url - $1" >&2; return; }
+    local -r id="${BASH_REMATCH[3]}"
     [ -e "m-$id" ] && return
     echo "$1" >&2
     local -r t="$(ucurl -b "$2" "$1" | jq -r '.html.content')"
@@ -48,8 +49,8 @@ get_user() {
 }
 
 get_thread() {
-    local -r rh="${1%/}"
-    local -r id="${rh##http?(s)://+(+([[:alnum:]-]).)+([[:alpha:]])/?(*[/?])@(thread?(s)|topic?(s))/?(*.)}"
+    [[ "$1" =~ ^http[s]?://([[:alnum:]-]+\.)+[[:alpha:]]+/(.*[./])?([[:digit:]]+)[/]?$ ]] || { echo "improper url - $1"; return; }
+    local -r id="${BASH_REMATCH[3]}"
     [ -e "$id" ] && return
     echo "$1"
     local t="$(ucurl -D- "$1")"
@@ -131,12 +132,19 @@ get_thread() {
         }))' > "$id"
 }
 
+get_category() {
+    for i in $(hgrep 'h3 +class="node-title"; a +href @p"'"$url"'%(href)a\n"' <&0)
+    do
+        get_forum "$i"
+    done
+}
+
 get_forum() {
     local t next
     t="$(ucurl "$1")"
     while :
     do
-        for j in $(hgrep -E 'div +class="structItem-title"; a +href=".*[/?]\(thread[s]\?\|topic[s]\?\)/.*/" @p"'"$url"'%(href)a\n"' <<< "$t")
+        for j in $(hgrep -E 'div +class="structItem-title"; a +href @p"'"$url"'%(href)a\n"' <<< "$t")
         do
             [ "$(jobs | wc -l)" -gt "$maxprocs" ] && wait %%
             get_thread "$j" &
@@ -147,6 +155,7 @@ get_forum() {
         grep -q '/page-[0-9]*$' <<< "$next" || break
         t="$(ucurl "$next")"
     done
+    get_category <<< "$t"
 }
 
 get_tag() {
@@ -154,7 +163,7 @@ get_tag() {
     t="$(ucurl "$1")"
     while :
     do
-        for j in $(hgrep 'div +class="contentRow "; a +href=".*/threads/.*/" @p"'"$url"'%(href)a\n"' <<< "$t")
+        for j in $(hgrep 'div +class="contentRow.*"; a +href -data-user-id @p"'"$url"'%(href)a\n"' <<< "$t")
         do
             [ "$(jobs | wc -l)" -gt "$maxprocs" ] && wait %%
             get_thread "$j" &
@@ -168,20 +177,20 @@ get_tag() {
 }
 
 get_old_thread() {
-    local -r rh="${1%/}"
-    local -r id="${rh##http?(s)://+(+([[:alnum:]-]).)+([[:alpha:]])/?(*[/?])@(thread?(s)|topic?(s))/?(*.)}"
+    [[ "$1" =~ ^http[s]?://([[:alnum:]-]+\.)+[[:alpha:]]+/(.*[./])?([[:digit:]]+)[/]?$ ]] || { echo "improper url - $1"; return; }
+    local -r id="${BASH_REMATCH[3]}"
     [ -e "$id" ] && return
     echo "$1"
-    local t="$(ucurl "$1")" t2 next
+    local t="$(ucurl "$1")" t2 next messageUserBlock avatar
 
     {
     echo "$1" #link
     echo "$id" #id
-    echo "$(hgrep 'div +class="titleBar"; h1 @p"%i\n"' <<< "$t" | sed ':x; s/<[^>]*>//g; $!{N;s/\n/ /;bx}')" #title
+    echo "$(hgrep 'div +class="titleBar.*"; h1 @p"%i\n"' <<< "$t" | sed ':x; s/<[^>]*>//g; $!{N;s/\n/ /;bx}')" #title
     echo "$(hgrep 'p +id="pageDescription"; a +class="username" +href @p"%(href)a\n"' <<< "$t" | sed 's/^.*[/.]\([0-9]\+\)/\1/; s/[^0-9]$//')" #user_id
     echo "$(hgrep 'p +id="pageDescription"; a +class="username" @p"%i\n"' <<< "$t")" #user
-    echo "$(hgrep 'p +id="pageDescription"; span +class="DateTime" @p"%i\n"' <<< "$t")" #date
-    echo "$(hgrep 'span +class="crumbs"; span +itemprop="title" @p"%i/"' <<< "$t")" #path
+    echo "$(hgrep 'p +id="pageDescription"; .* +class="DateTime" @p"%i\n"' <<< "$t")" #date
+    echo "$(hgrep 'span +class="crumbs"; span +itemprop="title"; .* @M"<" @p"%i/"' <<< "$t")" #path
     echo "$(hgrep 'ul +class="tagList"; a +class="tag" @p"%i|"' <<< "$t" | sed 's/<[^>]*>[^<]*<\/[^>]*>//g; s/|$//')" #tags
 
     while :
@@ -190,14 +199,22 @@ get_old_thread() {
         do
             {
             echo "$(hgrep 'li +data-author @l[0] @p"%(data-author)a\n"' <<< "$i")" #user
-            echo "$(hgrep 'div +class="messageUserBlock.*"; span +class="img m" +style @p"%(style)a\n"' <<< "$i" | sed 's#^.*/avatars/m/##; s#/.*##')" #user_id
-            echo "$(hgrep 'div +class="messageUserBlock.*"; h3 +class="userText"; em +class="userTitle" +itemprop="title" @p"%i\n"' <<< "$i")" #user_title
-            echo "$(hgrep 'div +class="messageUserBlock.*"; h3 +class="userText"; em +class="userBanner.*" +itemprop="title"; strong @p"%i\n"' <<< "$i")" #user_banner
-            echo "$(paste -d/ <(hgrep 'div +class='extraUserInfo'; dl +class="pairsJustified"; dt @p"%i\n"' <<< "$i") <(hgrep 'div +class='extraUserInfo'; dl +class="pairsJustified"; dd; .* @M"<" @p"%i\n"' <<< "$i") | sed ':x;$!{N;s/\n/|/;bx}')" #user_extra
-            echo "$(hgrep 'div +class="messageUserBlock.*"; span +class="img m" +style @p"'"$url"'%(style)a\n"' <<< "$i" | sed "s/?[0-9]*')//; s/background-image: url('/\//")" #avatar
+            messageUserBlock="$(hgrep 'div +class="messageUserBlock.*" @p"%i\n"' <<< "$i")"
+            avatar="$(hgrep 'a +class="avatar.*"; img +src @p"'"$url"'/%(src)a\n"' <<< "$messageUserBlock")"
+            if [ -z "$avatar" ]
+            then
+                echo "$(hgrep 'span +class="img m" +style @p"%(style)a\n"' <<< "$messageUserBlock" | sed 's#^.*/avatars/m/##; s#/.*##')" #user_id
+                echo "$(hgrep 'span +class="img m" +style @p"'"$url"'%(style)a\n"' <<< "$messageUserBlock" | sed "s/?[0-9]*')//; s/background-image: url('/\//; s/')$//")" #avatar
+            else
+                [[ "$(hgrep 'a +class="avatar.*" +href @p"%(href)a\n"' <<< "$messageUserBlock")" =~ \.([[:digit:]]*)[/]?$ ]] && echo "${BASH_REMATCH[1]}" || echo
+                echo "${avatar%\?[[:digit:]]*}" #avatar
+            fi
+            echo "$(hgrep 'h3 +class="userText"; em +class="userTitle.*" @p"%i\n"' <<< "$messageUserBlock")" #user_title
+            echo "$(hgrep 'h3 +class="userText"; em +class="userBanner.*"; .* @M"<" @p"%i\n"' <<< "$messageUserBlock" | sed '/^[ \t]*$/d')" #user_banner
+            echo "$(paste -d/ <(hgrep 'dt; .* @M"<" @p"%i\n"' <<< "$messageUserBlock") <(hgrep 'dd; .* @M"<" @p"%i\n"' <<< "$messageUserBlock") | sed ':x;$!{N;s/\n/|/;bx}')" #user_extra
             t2="$(hgrep 'li +data-author @l[0] +id="post-[0-9]*" @p"%(id)a\n"' <<< "$i")"
             echo "${t2#post-}" #id
-            echo "$(hgrep 'div +class="messageContent"; article @p"%i\n"' <<< "$i")"#text
+            echo "$(hgrep 'div +class="messageContent"; article @p"%i\n"' <<< "$i")" #text
             } | sed ':x;$!{N;s/\n/\t/;bx}'
         done
 
@@ -218,16 +235,23 @@ get_old_thread() {
         .["posts"]=($lines[8:-1] | map(split("\t") | {
             ("user"):.[0],
             ("user_id"):.[1],
-            ("user_title"):.[2],
-            ("user_banner"):.[3],
-            ("user_extra"):(.[4] | split("|") | map(split("/") | {
+            ("avatar"):.[2],
+            ("user_title"):.[3],
+            ("user_banner"):.[4],
+            ("user_extra"):(.[5] | split("|") | map(split("/") | {
                     ("name"):.[0],
                     ("value"):.[1]
             })),
-            ("avatar"):.[5],
             ("id"):.[6],
             ("text"):.[7]
         }))' > "$id"
+}
+
+get_old_category() {
+    for i in $(hgrep 'h3 +class="nodeTitle"; a +href @p"'"$url"'/%(href)a\n"' <&0)
+    do
+        get_old_forum_tag "$i"
+    done
 }
 
 get_old_forum_tag() {
@@ -246,6 +270,7 @@ get_old_forum_tag() {
         grep -q '/page-[0-9]*$' <<< "$next" || break
         t="$(ucurl "$next")"
     done
+    get_old_category <<< "$t"
 }
 
 baseurl() {
@@ -261,6 +286,7 @@ usage() {
     printf '  -t,\t--thread URL\t\tpass URL as thread link\n'
     printf '  -T,\t--tag URL\t\tpass URL as tag link\n'
     printf '  -f,\t--forum URL\t\tpass URL as forum link\n'
+    printf '  -c,\t--category URL\t\tpass URL as category link, can be used to download the whole forum\n'
     printf '  -o,\t--old\t\t\tuse old format\n'
     printf '  -h,\t--help\t\t\tshow this message\n'
 }
@@ -296,6 +322,15 @@ do
                 get_old_forum_tag "$2"
             else
                 get_tag "$2"
+            fi
+            shift;;
+        -c|--category)
+            url="$(baseurl "$2")"
+            if [ -n "$old" ]
+            then
+                ucurl "$2" | get_old_category "$2"
+            else
+                ucurl "$2" | get_category "$2"
             fi
             shift;;
         -b|--cookie) _cookies="$2"; shift;;

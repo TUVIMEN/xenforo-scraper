@@ -13,14 +13,14 @@ A bash script for downloading xenforo forums in json.
 
 ## Supported links formats
 
-    http[s]://forum.com/threads/*
-    http[s]://forum.com/forum[s]/threads/*
-    http[s]://forum.com/*/threads/*
-    http[s]://forum.com/forums/*
-    http[s]://forum.com/forum[s]/forums/*
-    http[s]://forum.com/*/forums/*
-    http[s]://forum.com/tags/*
-    http[s]://forum.com/*/tags/*
+    http?(s)://forum.com/threads/*
+    http?(s)://forum.com/forum[s]/threads/*
+    http?(s)://forum.com/*/threads/*
+    http?(s)://forum.com/forums/*
+    http?(s)://forum.com/forum[s]/forums/*
+    http?(s)://forum.com/*/forums/*
+    http?(s)://forum.com/tags/*
+    http?(s)://forum.com/*/tags/*
 
 
 ## Json format
@@ -39,6 +39,7 @@ Here's example of [thread](thread-example.json), [old-thread](old-thread-example
 
     https://forums.whyweprotest.net/
     https://www.forumhouse.ru/forums
+    https://www.bigsoccer.com/forums/
 
 ## Usage
 
@@ -57,6 +58,10 @@ Download thread by irregular thread url into DIR
 Download old format forum
 
     xenforo -o 'https://forum.com/forums/jus.82/'
+
+Download whole forum
+
+    xenforo -c 'https://forum.com/forums/'
 
 Get some help
 
