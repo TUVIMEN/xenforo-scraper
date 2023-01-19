@@ -78,7 +78,8 @@ get_thread() {
         for i in $(tr -d '\r\n\t\a' <<< "$t" | hgrep 'article +id @p"%A\n"')
         do
             {
-            hgrep 'h4 +class="message-name"; .* +data-user-id @p"%(data-user-id)a\n", h4 +class="message-name"; .* +data-user-id; .* @M"<" @p"%i\n"' <<< "$i" #user_id user
+            echo "$(hgrep 'h4 +class="message-name.*"; .* +data-user-id @p"%(data-user-id)a\n"' <<< "$i")" #user_id
+            echo "$(hgrep 'h4 +class="message-name.*"; .* @M"<" @p"%i\n"' <<< "$i")" #user
             get_user "$(hgrep 'h4 +class="message-name"; a +data-user-id +href @p"'"$url"'%(href)a'"$url_first_delimiter"'tooltip=true&_xfWithData=1&_xfToken='"$xfToken"'&_xfResponseType=json\n"' <<< "$i")" "$cookies"
             t2="$(hgrep 'span +id="post-[0-9]*" @p"%(id)a\n"' <<< "$i")"
             echo "${t2#post-}" #id
