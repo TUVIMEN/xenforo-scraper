@@ -65,8 +65,8 @@ get_thread() {
     echo "$(hgrep 'h1 +class="p-title-value" @p"%i\n"' <<< "$t" | sed ':x; s/<[^>]*>//g; $!{N;s/\n/ /;bx}')" #title
     echo "$(hgrep 'div +class="p-description"; .* +data-user-id @p"%(data-user-id)a\n"' <<< "$t")" #user_id
     echo "$(hgrep 'div +class="p-description"; .* +data-user-id; .* @M"<" @p"%i\n"' <<< "$t")" #user
-    echo "$(hgrep 'div +class="p-description"; time +datetime @p"%(datetime)a\n"' <<< "$t")" # date
-    echo "$(hgrep 'ul +class="p-breadcrumbs "; span @p"%i/"' <<< "$t")" #path
+    echo "$(hgrep 'div +class="p-description"; time +datetime @p"%(datetime)a\n"' <<< "$t")" #date
+    echo "$(hgrep 'ul +class="p-breadcrumbs .*" -class=".* p-breadcrumbs--bottom.*"; span @p"%i/"' <<< "$t")" #path
     echo "$(hgrep 'span +class="js-tagList"; a +class="tagItem tagItem--.*" @p"%i"' <<< "$t" | sed ':x; s/\t//g; /^$/d; $!{N;s/\n/|/;bx}; s/|$//; s/|\+/|/g')" #tags
     echo "$(hgrep 'form +data-xf-init="poll-block ajax-submit"; h2 +class="block-header" @p"%i\n"' <<< "$t" | sed 's/\t//g; s/<[^>]*>//g; s/^ *//; s/ *$//; /^$/d;')" #poll.title
     echo "$(paste -d '' <(hgrep 'form +data-xf-init="poll-block ajax-submit"; h3 +class="pollResult-response" @p"%i\n"' <<< "$t") <(hgrep 'form +data-xf-init="poll-block ajax-submit"; span +class="pollResult-votes" @p"%i\n"' <<< "$t" | sed 's/\t//g; s/<[^>]*>//g; s/^ *//; s/ *$//; /^$/d; s/^.* //') | sed ':x;$!{N;s/\n/\t/;bx}')" #poll.answers
@@ -89,7 +89,7 @@ get_thread() {
             t2="$(hgrep 'a +class="reactionsBar-link" +href @p"'"$url"'%(href)a\n"' <<< "$i")"
             if [ -n "$t2" ] #reactions
             then
-                echo "$(for j in $(ucurl -b "$cookies" "$t2${url_first_delimiter}_xfRequestUri=&_xfWithData=1&_xfToken=$xfToken&_xfResponseType=json" | jq -r .html.content | tr -d '\n\t' | hgrep 'div +class="contentRow"'); do hgrep '.* +class="username " +data-user-id @p"%(data-user-id)a\n", .* +class="username " +data-user-id; .* @M"<" @p"%i\n", time +class="u-dt" +datetime @p"%(datetime)a\n", span +class="reaction .*"; img +title @p"%(title)a\n"' <<< "$j" | sed ':x; $!{N;s/\n/|/;bx}'; done | sed ':x; $!{N;s/\n/^/;bx}')"
+                echo "$(for j in $(ucurl -b "$cookies" "$t2${url_first_delimiter}_xfRequestUri=&_xfWithData=1&_xfToken=$xfToken&_xfResponseType=json" | jq -r .html.content | tr -d '\n\t' | hgrep 'div +class="contentRow"'); do hgrep '.* +class="username .*" +data-user-id @p"%(data-user-id)a\n", .* +class="username .*" +data-user-id; .* @M"<" @p"%i\n", time +class="u-dt" +datetime @p"%(datetime)a\n", span +class="reaction .*"; img +title @p"%(title)a\n"' <<< "$j" | sed ':x; $!{N;s/\n/|/;bx}'; done | sed ':x; $!{N;s/\n/^/;bx}')"
             else
                 echo
             fi
