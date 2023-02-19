@@ -297,7 +297,7 @@ usage() {
 while [ "$#" -gt 0 ]
 do
     case "$1" in
-        -d|--dir) cd "$2" || continue; shift;;
+        -d|--dir) cd "$2" || break; shift;;
         -t|--thread)
             url="$(baseurl "$2")"
             if [ -n "$old" ]
