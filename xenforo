@@ -219,7 +219,7 @@ get_old_thread() {
             } | sed ':x;$!{N;s/\n/\t/;bx}'
         done
 
-        next="$(hgrep 'nav; a +class="[nt]ext.*" +href @m"&gt;" @p"'"$url"'/%(href)a\n"' <<< "$t" | tail -n1)"
+        next="$(hgrep 'nav; a +class +href=".*/page-[0-9]*" @m"^[^0-9]*&gt;" @p"'"$url"'/%(href)a\n"' <<< "$t" | tail -n1)"
         grep -q '/page-[0-9]*$' <<< "$next" || break
         t="$(ucurl "$next")"
     done
@@ -249,7 +249,7 @@ get_old_thread() {
 }
 
 get_old_category() {
-    for i in $(hgrep 'h3 +class="nodeTitle"; a +href @p"'"$url"'/%(href)a\n"' <&0)
+    for i in $(hgrep 'h3 +class="nodeTitle"; a -href="#.*" +href @p"'"$url"'/%(href)a\n"' <&0)
     do
         get_old_forum_tag "$i"
     done
@@ -266,7 +266,7 @@ get_old_forum_tag() {
             get_old_thread "$j" &
         done
 
-        next="$(hgrep 'nav; a +class="[nt]ext.*" +href @m"&gt;" @p"'"$url"'/%(href)a\n"' <<< "$t" | tail -n1)"
+        next="$(hgrep 'nav; a +class +href=".*/page-[0-9]*" @m"^[^0-9]*&gt;" @p"'"$url"'/%(href)a\n"' <<< "$t" | tail -n1)"
         echo "$next"
         grep -q '/page-[0-9]*$' <<< "$next" || break
         t="$(ucurl "$next")"
