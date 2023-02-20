@@ -4,7 +4,7 @@
 
 shopt -s extglob
 
-declare maxprocs='1' url _cookies old
+declare maxprocs='1' url _cookies old nousers='0'
 
 IFS=$'\n'
 
@@ -79,8 +79,8 @@ get_thread() {
         do
             {
             echo "$(hgrep 'h4 +class="message-name.*"; .* +data-user-id @p"%(data-user-id)a\n"' <<< "$i")" #user_id
-            echo "$(hgrep 'h4 +class="message-name.*"; .* @M"<" @p"%i\n"' <<< "$i")" #user
-            get_user "$(hgrep 'h4 +class="message-name"; a +data-user-id +href @p"'"$url"'%(href)a'"$url_first_delimiter"'tooltip=true&_xfWithData=1&_xfToken='"$xfToken"'&_xfResponseType=json\n"' <<< "$i")" "$cookies"
+            echo "$(hgrep 'h4 +class="message-name.*"; .* @M"<" @p"%i"' <<< "$i")" #user
+            [ "$nousers" -eq '0' ] && get_user "$(hgrep 'h4 +class="message-name.*"; a +data-user-id +href @p"'"$url"'%(href)a'"$url_first_delimiter"'tooltip=true&_xfWithData=1&_xfToken='"$xfToken"'&_xfResponseType=json\n"' <<< "$i")" "$cookies"
             t2="$(hgrep 'span +id="post-[0-9]*" @p"%(id)a\n"' <<< "$i")"
             echo "${t2#post-}" #id
             echo "$(hgrep '.* +class="message-attribution-main.*"; time +datetime @p"%(datetime)a\n"' <<< "$i" | head -n1)" #date
@@ -289,6 +289,7 @@ usage() {
     printf '  -f,\t--forum URL\t\tpass URL as forum link\n'
     printf '  -c,\t--category URL\t\tpass URL as category link, can be used to download the whole forum\n'
     printf '  -o,\t--old\t\t\tuse old format\n'
+    printf '  -N,\t--no-users\t\tdo not download users\n'
     printf '  -h,\t--help\t\t\tshow this message\n'
 }
 
@@ -337,6 +338,7 @@ do
         -b|--cookie) _cookies="$2"; shift;;
         -p|--max-procs) maxprocs="$2"; shift;;
         -o|--old) old='1';;
+        -N|--no-users) nousers='1';;
         -h|--help) usage >&2; exit;;
         -*) usage >&2; exit 1;;
         *) break;;
