@@ -62,7 +62,7 @@ get_thread() {
     {
     echo "$1" #link
     echo "$id" #id
-    echo "$(hgrep 'h1 +class="p-title-value" @p"%i\n"' <<< "$t" | sed ':x; s/<[^>]*>//g; $!{N;s/\n/ /;bx}')" #title
+    echo "$(hgrep 'h1 +class="p-title-value" @p"%i\n", h1 +qid="page-header" @p"%i\n"' <<< "$t" | sed ':x; s/<[^>]*>//g; $!{N;s/\n/ /;bx}')" #title
     echo "$(hgrep 'div +class="p-description"; .* +data-user-id @p"%(data-user-id)a\n"' <<< "$t")" #user_id
     echo "$(hgrep 'div +class="p-description"; .* +data-user-id; .* @M"<" @p"%i\n"' <<< "$t")" #user
     echo "$(hgrep 'div +class="p-description"; time +datetime @p"%(datetime)a\n"' <<< "$t")" #date
@@ -83,7 +83,7 @@ get_thread() {
             get_user "$(hgrep 'h4 +class="message-name"; a +data-user-id +href @p"'"$url"'%(href)a'"$url_first_delimiter"'tooltip=true&_xfWithData=1&_xfToken='"$xfToken"'&_xfResponseType=json\n"' <<< "$i")" "$cookies"
             t2="$(hgrep 'span +id="post-[0-9]*" @p"%(id)a\n"' <<< "$i")"
             echo "${t2#post-}" #id
-            echo "$(hgrep 'time +datetime @p"%(datetime)a\n"' <<< "$i" | head -n1)" #date
+            echo "$(hgrep '.* +class="message-attribution-main.*"; time +datetime @p"%(datetime)a\n"' <<< "$i" | head -n1)" #date
             echo "$(hgrep 'div +class="bbWrapper" @p"%i\n"' <<< "$i")" #text
             echo "$(hgrep 'ul +class="attachmentList" @p"%i\n"' <<< "$i")" #attachments
             t2="$(hgrep 'a +class="reactionsBar-link" +href @p"'"$url"'%(href)a\n"' <<< "$i")"
