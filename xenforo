@@ -134,7 +134,7 @@ get_thread() {
 }
 
 get_category() {
-    for i in $(hgrep 'h3 +class="node-title"; a +href @p"'"$url"'%(href)a\n"' <&0)
+    for i in $(hgrep '.* +class="node-title"; a +href @p"'"$url"'%(href)a\n"' <&0)
     do
         get_forum "$i"
     done
@@ -145,7 +145,7 @@ get_forum() {
     t="$(ucurl "$1")"
     while :
     do
-        for j in $(hgrep -E 'div +class="structItem-title"; a +href @p"'"$url"'%(href)a\n"' <<< "$t")
+        for j in $(hgrep -E '.* +class="structItem-title"; a +href @p"'"$url"'%(href)a\n"' <<< "$t")
         do
             [ "$(jobs | wc -l)" -gt "$maxprocs" ] && wait %%
             get_thread "$j" &
