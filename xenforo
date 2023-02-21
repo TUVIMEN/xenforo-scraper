@@ -96,8 +96,8 @@ get_thread() {
             } | sed ':x;$!{N;s/\n/\t/;bx}'
         done
 
-        next="$(hgrep 'div +class="block-outer"; a +class="pageNav-jump pageNav-jump--next" +href @p"'"$url"'%(href)a\n"' <<< "$t" | head -n1)"
-        grep -q '/page-[0-9]*$' <<< "$next" || break
+        next="$(hgrep 'div +class="block-outer\( .*\)\?"; a +class="pageNav-jump pageNav-jump--next\( .*\)\?" +href @p"'"$url"'%(href)a\n"' <<< "$t" | head -n1)"
+        grep -Eq '/page-[0-9]*(\?.*)?/?$' <<< "$next" || break
         t="$(ucurl -b "$cookies" "$next")"
     done
     } | jq -RnMcs '
@@ -151,9 +151,9 @@ get_forum() {
             get_thread "$j" &
         done
 
-        next="$(hgrep 'div +class="block-outer"; a +class="pageNav-jump pageNav-jump--next" +href @p"'"$url"'%(href)a\n"' <<< "$t")"
+        next="$(hgrep 'div +class="block-outer\( .*\)\?"; a +class="pageNav-jump pageNav-jump--next\( .*\)\?" +href @p"'"$url"'%(href)a\n"' <<< "$t" | head -n1)"
         echo "$next"
-        grep -q '/page-[0-9]*$' <<< "$next" || break
+        grep -Eq '/page-[0-9]*(\?.*)?/?$' <<< "$next" || break
         t="$(ucurl "$next")"
     done
     get_category <<< "$t"
