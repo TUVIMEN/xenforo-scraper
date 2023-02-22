@@ -4,7 +4,7 @@
 
 shopt -s extglob
 
-declare maxprocs='1' url _cookies old nousers='0'
+declare maxprocs='1' url _cookies old nousers='0' noreactions='0'
 
 IFS=$'\n'
 
@@ -86,10 +86,15 @@ get_thread() {
             echo "$(hgrep '.* +class="message-attribution-main.*"; time +datetime @p"%(datetime)a\n"' <<< "$i" | head -n1)" #date
             echo "$(hgrep 'div +class="bbWrapper" @p"%i\n"' <<< "$i")" #text
             echo "$(hgrep 'ul +class="attachmentList" @p"%i\n"' <<< "$i")" #attachments
-            t2="$(hgrep 'a +class="reactionsBar-link" +href @p"'"$url"'%(href)a\n"' <<< "$i")"
-            if [ -n "$t2" ] #reactions
+            if [ "$noreactions" -eq '0' ]
             then
-                echo "$(for j in $(ucurl -b "$cookies" "$t2${url_first_delimiter}_xfRequestUri=&_xfWithData=1&_xfToken=$xfToken&_xfResponseType=json" | jq -r .html.content | tr -d '\n\t' | hgrep 'div +class="contentRow"'); do hgrep '.* +class="username .*" +data-user-id @p"%(data-user-id)a\n", .* +class="username .*" +data-user-id; .* @M"<" @p"%i\n", time +class="u-dt" +datetime @p"%(datetime)a\n", span +class="reaction .*"; img +title @p"%(title)a\n"' <<< "$j" | sed ':x; $!{N;s/\n/|/;bx}'; done | sed ':x; $!{N;s/\n/^/;bx}')"
+                t2="$(hgrep 'a +class="reactionsBar-link" +href @p"'"$url"'%(href)a\n"' <<< "$i")"
+                if [ -n "$t2" ] #reactions
+                then
+                    echo "$(for j in $(ucurl -b "$cookies" "$t2${url_first_delimiter}_xfRequestUri=&_xfWithData=1&_xfToken=$xfToken&_xfResponseType=json" | jq -r .html.content | tr -d '\n\t' | hgrep 'div +class="contentRow"'); do hgrep '.* +class="username .*" +data-user-id @p"%(data-user-id)a\n", .* +class="username .*" +data-user-id; .* @M"<" @p"%i\n", time +class="u-dt" +datetime @p"%(datetime)a\n", span +class="reaction .*"; img +title @p"%(title)a\n"' <<< "$j" | sed ':x; $!{N;s/\n/|/;bx}'; done | sed ':x; $!{N;s/\n/^/;bx}')"
+                else
+                    echo
+                fi
             else
                 echo
             fi
@@ -289,6 +294,7 @@ usage() {
     printf '  -f,\t--forum URL\t\tpass URL as forum link\n'
     printf '  -c,\t--category URL\t\tpass URL as category link, can be used to download the whole forum\n'
     printf '  -o,\t--old\t\t\tuse old format\n'
+    printf '  -n,\t--no-reactions\t\tdo not download reactions to posts\n'
     printf '  -N,\t--no-users\t\tdo not download users\n'
     printf '  -h,\t--help\t\t\tshow this message\n'
 }
@@ -338,6 +344,7 @@ do
         -b|--cookie) _cookies="$2"; shift;;
         -p|--max-procs) maxprocs="$2"; shift;;
         -o|--old) old='1';;
+        -n|--no-reactions) noreactions='1';;
         -N|--no-users) nousers='1';;
         -h|--help) usage >&2; exit;;
         -*) usage >&2; exit 1;;
