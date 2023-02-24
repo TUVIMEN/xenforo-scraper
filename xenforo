@@ -206,13 +206,13 @@ get_old_thread() {
             {
             echo "$(hgrep 'li +data-author @l[0] @p"%(data-author)a\n"' <<< "$i")" #user
             messageUserBlock="$(hgrep 'div +class="messageUserBlock.*" @p"%i\n"' <<< "$i")"
-            avatar="$(hgrep 'a +class="avatar.*"; img +src @p"'"$url"'/%(src)a\n"' <<< "$messageUserBlock")"
+            avatar="$(hgrep '.* +class="avatar.*"; img +src @p"'"$url"'/%(src)a\n"' <<< "$messageUserBlock" | head -n1)"
             if [ -z "$avatar" ]
             then
-                echo "$(hgrep 'span +class="img m" +style @p"%(style)a\n"' <<< "$messageUserBlock" | sed 's#^.*/avatars/m/##; s#/.*##')" #user_id
+                echo "$(hgrep 'span +class="img m" +style @p"%(style)a\n"' <<< "$messageUserBlock" | sed 's#^.*/avatars/m/[0-9]*/##; s#\..*##')" #user_id
                 echo "$(hgrep 'span +class="img m" +style @p"'"$url"'%(style)a\n"' <<< "$messageUserBlock" | sed "s/?[0-9]*')//; s/background-image: url('/\//; s/')$//")" #avatar
             else
-                [[ "$(hgrep 'a +class="avatar.*" +href @p"%(href)a\n"' <<< "$messageUserBlock")" =~ \.([[:digit:]]*)[/]?$ ]] && echo "${BASH_REMATCH[1]}" || echo
+                [[ "$avatar" =~ /([[:digit:]]*)\.[[:alpha:]]*?(\?.*)$ ]] && echo "${BASH_REMATCH[1]}" || echo
                 echo "${avatar%\?[[:digit:]]*}" #avatar
             fi
             echo "$(hgrep 'h3 +class="userText"; em +class="userTitle.*" @p"%i\n"' <<< "$messageUserBlock")" #user_title
