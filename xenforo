@@ -14,7 +14,7 @@ ucurl() {
 
 get_user() {
     [ -z "$1" ] && return
-    [[ "$1" =~ ^http[s]?://([[:alnum:]-]+\.)+[[:alpha:]]+/(.*[./])?([[:digit:]]+)/\?tooltip=true\&.*$ ]] || { echo "improper url - $1" >&2; return; }
+    [[ "$1" =~ ^http[s]?://([[:alnum:]-]+\.)+[[:alpha:]]+/(.*[./])?([[:digit:]]+)/[\&?]tooltip=true\&.*$ ]] || { echo "improper url - $1" >&2; return; }
     local -r id="${BASH_REMATCH[3]}"
     [ -e "m-$id" ] && return
     echo "$1" >&2
@@ -54,9 +54,12 @@ get_thread() {
     [ -e "$id" ] && return
     echo "$1"
     local t="$(ucurl -D- "$1")"
-    local t2 url_first_delimiter='?'
+    local t2 cookies url_first_delimiter='?'
     [ -z "${1##*\?*}" ] && url_first_delimiter='&'
-    local -r cookies="$(sed -n '/^<!DOCTYPE html>/q; /^[sS]et-[cC]ookie: /{s/Set-Cookie: //i;p}' <<< "$t" | sed ':x;s/\r//g;$!{N;s/\n/\;/;bx}')"
+    if [ "$nousers" -eq '0' ]
+    then
+        cookies="$(sed -n '/^<!DOCTYPE html>/q; /^[sS]et-[cC]ookie: /{s/Set-Cookie: //i;p}' <<< "$t" | sed ':x;s/\r//g;$!{N;s/\n/\;/;bx}')"
+    fi
     local next
 
     {
@@ -280,7 +283,7 @@ get_old_forum_tag() {
 }
 
 baseurl() {
-    sed -E 's/(http[s]:\/\/([[:alnum:]-]+\.)+[[:alpha:]]+).*/\1/' <<< "$1"
+    [[ "$1" =~ ^(http[s]?://([[:alnum:]-]+\.)+[[:alpha:]]+)/.*$ ]] && echo "${BASH_REMATCH[1]}"
 }
 
 usage() {
