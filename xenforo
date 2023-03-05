@@ -49,7 +49,7 @@ get_user() {
 }
 
 get_thread() {
-    [[ "$1" =~ ^http[s]?://([[:alnum:]-]+\.)+[[:alpha:]]+/(.*[./])?([[:digit:]]+)[/]?$ ]] || { echo "improper url - $1"; return; }
+    [[ "$1" =~ ^http[s]?://([[:alnum:]-]+\.)+[[:alpha:]]+/(.*[./])?([[:digit:]]+)(/.*)?$ ]] || { echo "improper url - $1"; return; }
     local -r id="${BASH_REMATCH[3]}"
     [ -e "$id" ] && return
     echo "$1"
@@ -70,7 +70,7 @@ get_thread() {
     echo "$(hgrep 'div +class="p-description"; .* +data-user-id; .* @M"<" @p"%i\n"' <<< "$t")" #user
     echo "$(hgrep 'div +class="p-description"; time +datetime @p"%(datetime)a\n"' <<< "$t")" #date
     echo "$(hgrep 'ul +class="p-breadcrumbs .*" -class=".* p-breadcrumbs--bottom.*"; span @p"%i/"' <<< "$t")" #path
-    echo "$(hgrep 'span +class="js-tagList"; a +class="tagItem tagItem--.*" @p"%i"' <<< "$t" | sed ':x; s/\t//g; /^$/d; $!{N;s/\n/|/;bx}; s/|$//; s/|\+/|/g')" #tags
+    echo "$(hgrep 'a +class="tagItem.*" @p"%i\n"' <<< "$t" | sed ':x; s/\t//g; /^$/d; $!{N;s/\n/|/;bx}; s/|$//; s/|\+/|/g')" #tags
     echo "$(hgrep 'form +data-xf-init="poll-block ajax-submit"; h2 +class="block-header" @p"%i\n"' <<< "$t" | sed 's/\t//g; s/<[^>]*>//g; s/^ *//; s/ *$//; /^$/d;')" #poll.title
     echo "$(paste -d '' <(hgrep 'form +data-xf-init="poll-block ajax-submit"; h3 +class="pollResult-response" @p"%i\n"' <<< "$t") <(hgrep 'form +data-xf-init="poll-block ajax-submit"; span +class="pollResult-votes" @p"%i\n"' <<< "$t" | sed 's/\t//g; s/<[^>]*>//g; s/^ *//; s/ *$//; /^$/d; s/^.* //') | sed ':x;$!{N;s/\n/\t/;bx}')" #poll.answers
     local xfToken="$(hgrep 'html +data-csrf @p"%(data-csrf)a\n"' <<< "$t")"
@@ -195,11 +195,11 @@ get_old_thread() {
     {
     echo "$1" #link
     echo "$id" #id
-    echo "$(hgrep 'div +class="titleBar.*"; h1 @p"%i\n"' <<< "$t" | sed ':x; s/<[^>]*>//g; $!{N;s/\n/ /;bx}')" #title
+    echo "$(hgrep 'div +class="titleBar.*"; h1 @p"%i\n", div +id="header"; h1 @p"%i\n"' <<< "$t" | sed ':x; s/<[^>]*>//g; $!{N;s/\n/ /;bx}')" #title
     echo "$(hgrep 'p +id="pageDescription"; a +class="username" +href @p"%(href)a\n"' <<< "$t" | sed 's/^.*[/.]\([0-9]\+\)/\1/; s/[^0-9]$//')" #user_id
     echo "$(hgrep 'p +id="pageDescription"; a +class="username" @p"%i\n"' <<< "$t")" #user
     echo "$(hgrep 'p +id="pageDescription"; .* +class="DateTime" @p"%i\n"' <<< "$t")" #date
-    echo "$(hgrep 'span +class="crumbs"; span +itemprop="title"; .* @M"<" @p"%i/"' <<< "$t")" #path
+    echo "$(hgrep 'span +class="crumbs"; span +itemprop="[a-z]*"; .* @M"<" @p"%i/"' <<< "$t")" #path
     echo "$(hgrep 'ul +class="tagList"; a +class="tag" @p"%i|"' <<< "$t" | sed 's/<[^>]*>[^<]*<\/[^>]*>//g; s/|$//')" #tags
 
     while :
