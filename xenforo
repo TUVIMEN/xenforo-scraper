@@ -286,7 +286,7 @@ get_old_forum_tag() {
 }
 
 baseurl() {
-    [[ "$1" =~ ^(http[s]?://([[:alnum:]-]+\.)+[[:alpha:]]+)/.*$ ]] && echo "${BASH_REMATCH[1]}"
+    [[ "$1" =~ ^(http[s]?://([[:alnum:]-]+\.)+[[:alpha:]]+)(/.*)?$ ]] && echo "${BASH_REMATCH[1]}"
 }
 
 usage() {
