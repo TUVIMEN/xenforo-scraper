@@ -32,7 +32,7 @@ get_user() {
     echo "$(hgrep 'em; a +href @p"%(href)a\n"' <<< "$t")" #forum
     echo "$(hgrep 'dl @m"<dt>Messages</dt>"; dd; .* @M"<" @p"%i\n"' <<< "$t" | sed -n '/[0-9]/{s/[,\t]//gp;q}')" #messages
     echo "$(hgrep 'dl @m"<dt.*>Reaction.*</dt>"; dd; .* @M"<" @p"%i\n"' <<< "$t" | sed -n '/[0-9]/{s/[,\t]//gp;q}')" #reactionscore
-    echo "$(hgrep 'dl @m"<dt title=".*">Points</dt>"; dd; .* @M"<" @p"%i\n"' <<< "$t" | sed -n '/[0-9]/{s/[,\t]//gp;q}')" #points
+    echo "$(hgrep 'dl @m"<dt .*title=".*">Points</dt>"; dd; .* @M"<" @p"%i\n"' <<< "$t" | sed -n '/[0-9]/{s/[,\t]//gp;q}')" #points
     } | jq -RnMc '
         .["id"]=input |
         .["location"]=input |
@@ -74,7 +74,8 @@ get_thread() {
     echo "$(hgrep 'form +data-xf-init="poll-block ajax-submit"; h2 +class="block-header" @p"%i\n"' <<< "$t" | sed 's/\t//g; s/<[^>]*>//g; s/^ *//; s/ *$//; /^$/d;')" #poll.title
     echo "$(paste -d '' <(hgrep 'form +data-xf-init="poll-block ajax-submit"; h3 +class="pollResult-response" @p"%i\n"' <<< "$t") <(hgrep 'form +data-xf-init="poll-block ajax-submit"; span +class="pollResult-votes" @p"%i\n"' <<< "$t" | sed 's/\t//g; s/<[^>]*>//g; s/^ *//; s/ *$//; /^$/d; s/^.* //') | sed ':x;$!{N;s/\n/\t/;bx}')" #poll.answers
     local xfToken="$(hgrep 'html +data-csrf @p"%(data-csrf)a\n"' <<< "$t")"
-    [ -z "$xfToken" ] && xfToken="$(hgrep 'input +name="_xfToken" +value @p"%(value)a\n"' <<< "$t" | head -n1)"
+    [ -z "$xfToken" ] && xfToken="$(hgrep 'input +name="_xfToken" +value @p"%(value)a\n"' <<< "$t" | head -n1)" && \
+    [ -z "$xfToken" ] && xfToken="$(sed -n "/^[ \t]*csrf: '[0-9]*,[a-f0-9]*',/{s/.*: '//;s/'.*//;p;q}" <<< "$t")"
 
     while :
     do
@@ -144,6 +145,7 @@ get_thread() {
 get_category() {
     for i in $(hgrep '.* +class="node-title"; a +href @p"'"$url"'%(href)a\n"' <&0)
     do
+        echo "$i"
         get_forum "$i"
     done
 }
@@ -257,8 +259,9 @@ get_old_thread() {
 }
 
 get_old_category() {
-    for i in $(hgrep 'h3 +class="nodeTitle"; a -href="#.*" +href @p"'"$url"'/%(href)a\n"' <&0)
+    for i in $(hgrep 'h3 +class="nodeTitle"; a -href=".\?#.*" +href @p"'"$url"'/%(href)a\n"' <&0)
     do
+        echo "$i"
         get_old_forum_tag "$i"
     done
 }
