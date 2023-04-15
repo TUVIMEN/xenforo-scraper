@@ -9,7 +9,7 @@ declare maxprocs='1' url _cookies old nousers='0' noreactions='0'
 IFS=$'\n'
 
 ucurl() {
-    curl -L -g -m 120 -s -b "$_cookies" --user-agent 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/5.15.2 Chrome/87.0.4280.144 Safari/537.36' -H 'Accept-Encoding: gzip, deflate' --compressed "$@"
+    curl -k -L -g -m 120 -s -b "$_cookies" --user-agent 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/5.15.2 Chrome/87.0.4280.144 Safari/537.36' -H 'Accept-Encoding: gzip, deflate' --compressed "$@"
 }
 
 get_user() {
@@ -23,16 +23,16 @@ get_user() {
     {
     echo "$id"
     echo "$(hgrep 'a +href="/misc/location-info.*" @p"%i\n"' <<< "$t")" #location
-    echo "$(hgrep 'img +src @p"%(src)a\n"' <<< "$t" | sed 's#^/[^/]#'"$url"'\0#;s#^//#https://#;s/?.*//')" #avatar
+    echo "$(hgrep 'img +src @p"%(src)a\n"' <<< "$t" | sed 's#^/[^/]#'"$url"'\0#;s#^//#https://#;s/?.*//; q')" #avatar
     echo "$(sed -n '/<div class="memberProfileBanner memberTooltip-header.*url(/{s#.*url(##;s#^/[^/]#'"$url"'\0#;s#^//#https://#;s/?.*//;p;q}' <<< "$t")" #background
     echo "$(hgrep 'dl +class="pairs pairs--inline" @m">Joined<"; time +datetime @p"%(datetime)a\n"' <<< "$t")" #joined
     echo "$(hgrep 'dl +class="pairs pairs--inline" @m">Last seen<"; time +datetime @p"%(datetime)a\n"' <<< "$t")" #lastseen
     echo "$(hgrep 'span +class="userTitle" @p"%i\n"' <<< "$t")" #title
     echo "$(hgrep 'h4 class="memberTooltip-name"; a; .* @M"<" @p"%i\n"' <<< "$t")" #name
     echo "$(hgrep 'em; a +href @p"%(href)a\n"' <<< "$t")" #forum
-    echo "$(hgrep 'dl @m"<dt>Messages</dt>"; dd; .* @M"<" @p"%i\n"' <<< "$t" | sed -n '/[0-9]/{s/[,\t]//gp;q}')" #messages
-    echo "$(hgrep 'dl @m"<dt.*>Reaction.*</dt>"; dd; .* @M"<" @p"%i\n"' <<< "$t" | sed -n '/[0-9]/{s/[,\t]//gp;q}')" #reactionscore
-    echo "$(hgrep 'dl @m"<dt .*title=".*">Points</dt>"; dd; .* @M"<" @p"%i\n"' <<< "$t" | sed -n '/[0-9]/{s/[,\t]//gp;q}')" #points
+    echo "$(hgrep 'dl @m"<dt>Messages</dt>"; dd; .* @M"<" @p"%i\n"' <<< "$t" | sed -n '/[0-9]/{s/[,\t ]//g;p;q}')" #messages
+    echo "$(hgrep 'dl @m"<dt.*>Reaction.*</dt>"; dd; .* @M"<" @p"%i\n"' <<< "$t" | sed -n '/[0-9]/{s/[,\t ]//g;p;q}')" #reactionscore
+    echo "$(hgrep 'dl @m"<dt .*title=".*">Points</dt>"; dd; .* @M"<" @p"%i\n"' <<< "$t" | sed -n '/[0-9]/{s/[,\t ]//g;p;q}')" #points
     } | jq -RnMc '
         .["id"]=input |
         .["location"]=input |
@@ -65,7 +65,7 @@ get_thread() {
     {
     echo "$1" #link
     echo "$id" #id
-    echo "$(hgrep 'h1 +class="p-title-value" @p"%i\n", h1 +qid="page-header" @p"%i\n"' <<< "$t" | sed ':x; s/<[^>]*>//g; $!{N;s/\n/ /;bx}')" #title
+    echo "$(hgrep 'h1 +class="p-title-value" @p"%i\n", h1 +qid="page-header" @p"%i\n", h1 +class="MessageCard__thread-title" @p"%i\n"' <<< "$t" | sed ':x; s/<[^>]*>//g; $!{N;s/\n/ /;bx}')" #title
     echo "$(hgrep 'div +class="p-description"; .* +data-user-id @p"%(data-user-id)a\n"' <<< "$t")" #user_id
     echo "$(hgrep 'div +class="p-description"; .* +data-user-id; .* @M"<" @p"%i\n"' <<< "$t")" #user
     echo "$(hgrep 'div +class="p-description"; time +datetime @p"%(datetime)a\n"' <<< "$t")" #date
@@ -79,17 +79,17 @@ get_thread() {
 
     while :
     do
-        for i in $(tr -d '\r\n\t\a' <<< "$t" | hgrep 'article +id @p"%A\n"')
+        for i in $(tr -d '\r\n\t\a' <<< "$t" | hgrep 'article +id, div +id="post-[0-9]*"')
         do
             {
-            echo "$(hgrep 'h4 +class="message-name.*"; .* +data-user-id @p"%(data-user-id)a\n"' <<< "$i")" #user_id
-            echo "$(hgrep 'h4 +class="message-name.*"; .* @M"<" @p"%i"' <<< "$i")" #user
-            [ "$nousers" -eq '0' ] && get_user "$(hgrep 'h4 +class="message-name.*"; a +data-user-id +href @p"'"$url"'%(href)a'"$url_first_delimiter"'tooltip=true&_xfWithData=1&_xfToken='"$xfToken"'&_xfResponseType=json\n"' <<< "$i")" "$cookies"
-            t2="$(hgrep 'span +id="post-[0-9]*" @p"%(id)a\n"' <<< "$i")"
+                echo "$(hgrep 'h4 +class="message-name.*"; .* +data-user-id @p"%(data-user-id)a\n", div +class="MessageCard__avatar"; a +data-user-id @p"%(data-user-id)a\n"' <<< "$i")" #user_id
+            echo "$(hgrep 'h4 +class="message-name.*"; .* @M"<" @p"%i", .* +class="MessageCard__user-info__name"; .* @M"<" @p"%i\n"' <<< "$i")" #user
+            [ "$nousers" -eq '0' ] && get_user "$(hgrep 'h4 +class="message-name.*"; a +data-user-id +href @p"'"$url"'%(href)a'"$url_first_delimiter"'tooltip=true&_xfWithData=1&_xfToken='"$xfToken"'&_xfResponseType=json\n", div +class="MessageCard__avatar"; a +data-user-id +href @p"'"$url"'%(href)a'"$url_first_delimiter"'tooltip=true&_xfWithData=1&_xfToken='"$xfToken"'&_xfResponseType=json\n"' <<< "$i")" "$cookies"
+            t2="$(hgrep 'span +id="post-[0-9]*" @p"%(id)a\n", div +id="post-[0-9]*" @p"%(id)a\n"' <<< "$i")"
             echo "${t2#post-}" #id
-            echo "$(hgrep '.* +class="message-attribution-main.*"; time +datetime @p"%(datetime)a\n"' <<< "$i" | head -n1)" #date
-            echo "$(hgrep 'div +class="bbWrapper" @p"%i\n"' <<< "$i")" #text
-            echo "$(hgrep 'ul +class="attachmentList" @p"%i\n"' <<< "$i")" #attachments
+            echo "$(hgrep '.* +class="message-attribution-main.*"; time +datetime @p"%(datetime)a\n", .* +class="MessageCard__date-created"; time +datetime +class="u-dt" @p"%(datetime)a\n"' <<< "$i" | head -n1)" #date
+            echo "$(hgrep 'article +class="message-body.*"; div +class="bbWrapper" @p"%i\n", div +class="MessageCard__content-inner"; div +class="bbWrapper" @p"%i\n"' <<< "$i")" #text
+            echo "$(hgrep 'ul +class="attachmentList" @p"%i\n", div +id="signature-content-wrapper"; div +class="bbWrapper" @p"%i\n"' <<< "$i")" #attachments
             if [ "$noreactions" -eq '0' ]
             then
                 t2="$(hgrep 'a +class="reactionsBar-link" +href @p"'"$url"'%(href)a\n"' <<< "$i")"
