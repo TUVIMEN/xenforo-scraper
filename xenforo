@@ -79,10 +79,10 @@ get_thread() {
 
     while :
     do
-        for i in $(tr -d '\r\n\t\a' <<< "$t" | hgrep 'article +id, div +id="post-[0-9]*"')
+        for i in $([ -z "$next" ] && tr -d '\r\n\t\a' <<< "$t" |  hgrep 'div +id=thread-main-section; div +class="MessageCard .*" @l[1] @p"%i\n"') $(tr -d '\r\n\t\a' <<< "$t" | hgrep 'article +id, div +id="post-[0-9]*", div +class="block-container .*"; div +class="MessageCard .*" @p"%i\n"')
         do
             {
-                echo "$(hgrep 'h4 +class="message-name.*"; .* +data-user-id @p"%(data-user-id)a\n", div +class="MessageCard__avatar"; a +data-user-id @p"%(data-user-id)a\n"' <<< "$i")" #user_id
+            echo "$(hgrep 'h4 +class="message-name.*"; .* +data-user-id @p"%(data-user-id)a\n", div +class="MessageCard__avatar"; a +data-user-id @p"%(data-user-id)a\n"' <<< "$i")" #user_id
             echo "$(hgrep 'h4 +class="message-name.*"; .* @M"<" @p"%i", .* +class="MessageCard__user-info__name"; .* @M"<" @p"%i\n"' <<< "$i")" #user
             [ "$nousers" -eq '0' ] && get_user "$(hgrep 'h4 +class="message-name.*"; a +data-user-id +href @p"'"$url"'%(href)a'"$url_first_delimiter"'tooltip=true&_xfWithData=1&_xfToken='"$xfToken"'&_xfResponseType=json\n", div +class="MessageCard__avatar"; a +data-user-id +href @p"'"$url"'%(href)a'"$url_first_delimiter"'tooltip=true&_xfWithData=1&_xfToken='"$xfToken"'&_xfResponseType=json\n"' <<< "$i")" "$cookies"
             t2="$(hgrep 'span +id="post-[0-9]*" @p"%(id)a\n", div +id="post-[0-9]*" @p"%(id)a\n"' <<< "$i")"
