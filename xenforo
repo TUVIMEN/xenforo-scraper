@@ -22,17 +22,17 @@ get_user() {
 
     {
     echo "$id"
-    echo "$(hgrep 'a +href="/misc/location-info.*" @p"%i\n"' <<< "$t")" #location
-    echo "$(hgrep 'img +src @p"%(src)a\n"' <<< "$t" | sed 's#^/[^/]#'"$url"'\0#;s#^//#https://#;s/?.*//; q')" #avatar
+    echo "$(hgrep 'a +href="/misc/location-info.*" | "%i\n"' <<< "$t")" #location
+    echo "$(hgrep 'img +src | "%(src)a\n"' <<< "$t" | sed 's#^/[^/]#'"$url"'\0#;s#^//#https://#;s/?.*//; q')" #avatar
     echo "$(sed -n '/<div class="memberProfileBanner memberTooltip-header.*url(/{s#.*url(##;s#^/[^/]#'"$url"'\0#;s#^//#https://#;s/?.*//;p;q}' <<< "$t")" #background
-    echo "$(hgrep 'dl +class="pairs pairs--inline" @m">Joined<"; time +datetime @p"%(datetime)a\n"' <<< "$t")" #joined
-    echo "$(hgrep 'dl +class="pairs pairs--inline" @m">Last seen<"; time +datetime @p"%(datetime)a\n"' <<< "$t")" #lastseen
-    echo "$(hgrep 'span +class="userTitle" @p"%i\n"' <<< "$t")" #title
-    echo "$(hgrep 'h4 class="memberTooltip-name"; a; .* @M"<" @p"%i\n"' <<< "$t")" #name
-    echo "$(hgrep 'em; a +href @p"%(href)a\n"' <<< "$t")" #forum
-    echo "$(hgrep 'dl @m"<dt>Messages</dt>"; dd; .* @M"<" @p"%i\n"' <<< "$t" | sed -n '/[0-9]/{s/[,\t ]//g;p;q}')" #messages
-    echo "$(hgrep 'dl @m"<dt.*>Reaction.*</dt>"; dd; .* @M"<" @p"%i\n"' <<< "$t" | sed -n '/[0-9]/{s/[,\t ]//g;p;q}')" #reactionscore
-    echo "$(hgrep 'dl @m"<dt .*title=".*">Points</dt>"; dd; .* @M"<" @p"%i\n"' <<< "$t" | sed -n '/[0-9]/{s/[,\t ]//g;p;q}')" #points
+    echo "$(hgrep 'dl +class="pairs pairs--inline" @m">Joined<"; time +datetime | "%(datetime)a\n"' <<< "$t")" #joined
+    echo "$(hgrep 'dl +class="pairs pairs--inline" @m">Last seen<"; time +datetime | "%(datetime)a\n"' <<< "$t")" #lastseen
+    echo "$(hgrep 'span +class="userTitle" | "%i\n"' <<< "$t")" #title
+    echo "$(hgrep 'h4 class="memberTooltip-name"; a; .* @M"<" | "%i\n"' <<< "$t")" #name
+    echo "$(hgrep 'em; a +href | "%(href)a\n"' <<< "$t")" #forum
+    echo "$(hgrep 'dl @m"<dt>Messages</dt>"; dd; .* @M"<" | "%i\n"' <<< "$t" | sed -n '/[0-9]/{s/[,\t ]//g;p;q}')" #messages
+    echo "$(hgrep 'dl @m"<dt.*>Reaction.*</dt>"; dd; .* @M"<" | "%i\n"' <<< "$t" | sed -n '/[0-9]/{s/[,\t ]//g;p;q}')" #reactionscore
+    echo "$(hgrep 'dl @m"<dt .*title=".*">Points</dt>"; dd; .* @M"<" | "%i\n"' <<< "$t" | sed -n '/[0-9]/{s/[,\t ]//g;p;q}')" #points
     } | jq -RnMc '
         .["id"]=input |
         .["location"]=input |
@@ -65,37 +65,37 @@ get_thread() {
     {
     echo "$1" #link
     echo "$id" #id
-    echo "$(hgrep 'h1 +class="p-title-value" @p"%i\n", h1 +qid="page-header" @p"%i\n", h1 +class="MessageCard__thread-title" @p"%i\n"' <<< "$t" | sed ':x; s/<[^>]*>//g; $!{N;s/\n/ /;bx}')" #title
-    echo "$(hgrep 'div +class="p-description"; .* +data-user-id @p"%(data-user-id)a\n"' <<< "$t")" #user_id
-    echo "$(hgrep 'div +class="p-description"; .* +data-user-id; .* @M"<" @p"%i\n"' <<< "$t")" #user
-    echo "$(hgrep 'div +class="p-description"; time +datetime @p"%(datetime)a\n"' <<< "$t")" #date
-    echo "$(hgrep 'ul +class="p-breadcrumbs .*" -class=".* p-breadcrumbs--bottom.*"; span @p"%i/"' <<< "$t")" #path
-    echo "$(hgrep 'a +class="tagItem.*" @p"%i\n"' <<< "$t" | sed ':x; s/\t//g; /^$/d; $!{N;s/\n/|/;bx}; s/|$//; s/|\+/|/g')" #tags
-    echo "$(hgrep 'form +data-xf-init="poll-block ajax-submit"; h2 +class="block-header" @p"%i\n"' <<< "$t" | sed 's/\t//g; s/<[^>]*>//g; s/^ *//; s/ *$//; /^$/d;')" #poll.title
-    echo "$(paste -d '' <(hgrep 'form +data-xf-init="poll-block ajax-submit"; h3 +class="pollResult-response" @p"%i\n"' <<< "$t") <(hgrep 'form +data-xf-init="poll-block ajax-submit"; span +class="pollResult-votes" @p"%i\n"' <<< "$t" | sed 's/\t//g; s/<[^>]*>//g; s/^ *//; s/ *$//; /^$/d; s/^.* //') | sed ':x;$!{N;s/\n/\t/;bx}')" #poll.answers
-    local xfToken="$(hgrep 'html +data-csrf @p"%(data-csrf)a\n"' <<< "$t")"
-    [ -z "$xfToken" ] && xfToken="$(hgrep 'input +name="_xfToken" +value @p"%(value)a\n"' <<< "$t" | head -n1)" && \
+    echo "$(hgrep 'h1 +class="p-title-value" | "%i\n", h1 +qid="page-header" | "%i\n", h1 +class="MessageCard__thread-title" | "%i\n"' <<< "$t" | sed ':x; s/<[^>]*>//g; $!{N;s/\n/ /;bx}')" #title
+    echo "$(hgrep 'div +class="p-description"; .* +data-user-id | "%(data-user-id)a\n"' <<< "$t")" #user_id
+    echo "$(hgrep 'div +class="p-description"; .* +data-user-id; .* @M"<" | "%i\n"' <<< "$t")" #user
+    echo "$(hgrep 'div +class="p-description"; time +datetime | "%(datetime)a\n"' <<< "$t")" #date
+    echo "$(hgrep 'ul +class="p-breadcrumbs .*" -class=".* p-breadcrumbs--bottom.*"; span | "%i/"' <<< "$t")" #path
+    echo "$(hgrep 'a +class="tagItem.*" | "%i\n"' <<< "$t" | sed ':x; s/\t//g; /^$/d; $!{N;s/\n/|/;bx}; s/|$//; s/|\+/|/g')" #tags
+    echo "$(hgrep 'form +data-xf-init="poll-block ajax-submit"; h2 +class="block-header" | "%i\n"' <<< "$t" | sed 's/\t//g; s/<[^>]*>//g; s/^ *//; s/ *$//; /^$/d;')" #poll.title
+    echo "$(paste -d '' <(hgrep 'form +data-xf-init="poll-block ajax-submit"; h3 +class="pollResult-response" | "%i\n"' <<< "$t") <(hgrep 'form +data-xf-init="poll-block ajax-submit"; span +class="pollResult-votes" | "%i\n"' <<< "$t" | sed 's/\t//g; s/<[^>]*>//g; s/^ *//; s/ *$//; /^$/d; s/^.* //') | sed ':x;$!{N;s/\n/\t/;bx}')" #poll.answers
+    local xfToken="$(hgrep 'html +data-csrf | "%(data-csrf)a\n"' <<< "$t")"
+    [ -z "$xfToken" ] && xfToken="$(hgrep 'input +name="_xfToken" +value | "%(value)a\n"' <<< "$t" | head -n1)" && \
     [ -z "$xfToken" ] && xfToken="$(sed -n "/^[ \t]*csrf: '[0-9]*,[a-f0-9]*',/{s/.*: '//;s/'.*//;p;q}" <<< "$t")"
 
     while :
     do
-        for i in $([ -z "$next" ] && tr -d '\r\n\t\a' <<< "$t" |  hgrep 'div +id=thread-main-section; div +class="MessageCard .*" @l[1] @p"%i\n"') $(tr -d '\r\n\t\a' <<< "$t" | hgrep 'article +id, div +id="post-[0-9]*", div +class="block-container .*"; div +class="MessageCard .*" @p"%i\n"')
+        for i in $([ -z "$next" ] && tr -d '\r\n\t\a' <<< "$t" |  hgrep 'div +id=thread-main-section; div +class="MessageCard .*" @l[1] | "%i\n"') $(tr -d '\r\n\t\a' <<< "$t" | hgrep 'article +id, div +id="post-[0-9]*", div +class="block-container .*"; div +class="MessageCard .*" | "%i\n"')
         do
             {
-            echo "$(hgrep 'h4 +class="message-name.*"; .* +data-user-id @p"%(data-user-id)a\n", div +class="MessageCard__avatar"; a +data-user-id @p"%(data-user-id)a\n"' <<< "$i")" #user_id
-            echo "$(hgrep 'h4 +class="message-name.*"; .* @M"<" @p"%i", .* +class="MessageCard__user-info__name"; .* @M"<" @p"%i\n"' <<< "$i")" #user
-            [ "$nousers" -eq '0' ] && get_user "$(hgrep 'h4 +class="message-name.*"; a +data-user-id +href @p"'"$url"'%(href)a'"$url_first_delimiter"'tooltip=true&_xfWithData=1&_xfToken='"$xfToken"'&_xfResponseType=json\n", div +class="MessageCard__avatar"; a +data-user-id +href @p"'"$url"'%(href)a'"$url_first_delimiter"'tooltip=true&_xfWithData=1&_xfToken='"$xfToken"'&_xfResponseType=json\n"' <<< "$i")" "$cookies"
-            t2="$(hgrep 'span +id="post-[0-9]*" @p"%(id)a\n", div +id="post-[0-9]*" @p"%(id)a\n"' <<< "$i")"
+            echo "$(hgrep 'h4 +class="message-name.*"; .* +data-user-id | "%(data-user-id)a\n", div +class="MessageCard__avatar"; a +data-user-id | "%(data-user-id)a\n"' <<< "$i")" #user_id
+            echo "$(hgrep 'h4 +class="message-name.*"; .* @M"<" | "%i", .* +class="MessageCard__user-info__name"; .* @M"<" | "%i\n"' <<< "$i")" #user
+            [ "$nousers" -eq '0' ] && get_user "$(hgrep 'h4 +class="message-name.*"; a +data-user-id +href | "'"$url"'%(href)a'"$url_first_delimiter"'tooltip=true&_xfWithData=1&_xfToken='"$xfToken"'&_xfResponseType=json\n", div +class="MessageCard__avatar"; a +data-user-id +href | "'"$url"'%(href)a'"$url_first_delimiter"'tooltip=true&_xfWithData=1&_xfToken='"$xfToken"'&_xfResponseType=json\n"' <<< "$i")" "$cookies"
+            t2="$(hgrep 'span +id="post-[0-9]*" | "%(id)a\n", div +id="post-[0-9]*" | "%(id)a\n"' <<< "$i")"
             echo "${t2#post-}" #id
-            echo "$(hgrep '.* +class="message-attribution-main.*"; time +datetime @p"%(datetime)a\n", .* +class="MessageCard__date-created"; time +datetime +class="u-dt" @p"%(datetime)a\n"' <<< "$i" | head -n1)" #date
-            echo "$(hgrep 'article +class="message-body.*"; div +class="bbWrapper" @p"%i\n", div +class="MessageCard__content-inner"; div +class="bbWrapper" @p"%i\n"' <<< "$i")" #text
-            echo "$(hgrep 'ul +class="attachmentList" @p"%i\n", div +id="signature-content-wrapper"; div +class="bbWrapper" @p"%i\n"' <<< "$i")" #attachments
+            echo "$(hgrep '.* +class="message-attribution-main.*"; time +datetime | "%(datetime)a\n", .* +class="MessageCard__date-created"; time +datetime +class="u-dt" | "%(datetime)a\n"' <<< "$i" | head -n1)" #date
+            echo "$(hgrep 'article +class="message-body.*"; div +class="bbWrapper" | "%i\n", div +class="MessageCard__content-inner"; div +class="bbWrapper" | "%i\n"' <<< "$i")" #text
+            echo "$(hgrep 'ul +class="attachmentList" | "%i\n", div +id="signature-content-wrapper"; div +class="bbWrapper" | "%i\n"' <<< "$i")" #attachments
             if [ "$noreactions" -eq '0' ]
             then
-                t2="$(hgrep 'a +class="reactionsBar-link" +href @p"'"$url"'%(href)a\n"' <<< "$i")"
+                t2="$(hgrep 'a +class="reactionsBar-link" +href | "'"$url"'%(href)a\n"' <<< "$i")"
                 if [ -n "$t2" ] #reactions
                 then
-                    echo "$(for j in $(ucurl -b "$cookies" "$t2${url_first_delimiter}_xfRequestUri=&_xfWithData=1&_xfToken=$xfToken&_xfResponseType=json" | jq -r .html.content | tr -d '\n\t' | hgrep 'div +class="contentRow"'); do hgrep '.* +class="username .*" +data-user-id @p"%(data-user-id)a\n", .* +class="username .*" +data-user-id; .* @M"<" @p"%i\n", time +class="u-dt" +datetime @p"%(datetime)a\n", span +class="reaction .*"; img +title @p"%(title)a\n"' <<< "$j" | sed ':x; $!{N;s/\n/|/;bx}'; done | sed ':x; $!{N;s/\n/^/;bx}')"
+                    echo "$(for j in $(ucurl -b "$cookies" "$t2${url_first_delimiter}_xfRequestUri=&_xfWithData=1&_xfToken=$xfToken&_xfResponseType=json" | jq -r .html.content | tr -d '\n\t' | hgrep 'div +class="contentRow"'); do hgrep '.* +class="username .*" +data-user-id | "%(data-user-id)a\n", .* +class="username .*" +data-user-id; .* @M"<" | "%i\n", time +class="u-dt" +datetime | "%(datetime)a\n", span +class="reaction .*"; img +title | "%(title)a\n"' <<< "$j" | sed ':x; $!{N;s/\n/|/;bx}'; done | sed ':x; $!{N;s/\n/^/;bx}')"
                 else
                     echo
                 fi
@@ -105,7 +105,7 @@ get_thread() {
             } | sed ':x;$!{N;s/\n/\t/;bx}'
         done
 
-        next="$(hgrep 'div +class="block-outer\( .*\)\?"; a +class="pageNav-jump pageNav-jump--next\( .*\)\?" +href @p"'"$url"'%(href)a\n"' <<< "$t" | head -n1)"
+        next="$(hgrep 'div +class="block-outer\( .*\)\?"; a +class="pageNav-jump pageNav-jump--next\( .*\)\?" +href | "'"$url"'%(href)a\n"' <<< "$t" | head -n1)"
         grep -Eq '/page-[0-9]*(\?.*)?/?(#.*)?$' <<< "$next" || break
         t="$(ucurl -b "$cookies" "$next")"
     done
@@ -143,7 +143,7 @@ get_thread() {
 }
 
 get_category() {
-    for i in $(hgrep '.* +class="node-title"; a +href -href="/link-forums/.*" @p"'"$url"'%(href)a\n"' <&0)
+    for i in $(hgrep '.* +class="node-title"; a +href -href="/link-forums/.*" | "'"$url"'%(href)a\n"' <&0)
     do
         echo "$i"
         get_forum "$i"
@@ -155,13 +155,13 @@ get_forum() {
     t="$(ucurl "$1")"
     while :
     do
-        for j in $(hgrep -E '.* +class="structItem-title"; a +href @p"'"$url"'%(href)a\n"' <<< "$t")
+        for j in $(hgrep -E '.* +class="structItem-title"; a +href | "'"$url"'%(href)a\n"' <<< "$t")
         do
             [ "$(jobs | wc -l)" -gt "$maxprocs" ] && wait %%
             get_thread "$j" &
         done
 
-        next="$(hgrep 'div +class="block-outer\( .*\)\?"; a +class="pageNav-jump pageNav-jump--next\( .*\)\?" +href @p"'"$url"'%(href)a\n"' <<< "$t" | head -n1)"
+        next="$(hgrep 'div +class="block-outer\( .*\)\?"; a +class="pageNav-jump pageNav-jump--next\( .*\)\?" +href | "'"$url"'%(href)a\n"' <<< "$t" | head -n1)"
         echo "$next"
         grep -Eq '/page-[0-9]*(\?.*)?/?(#.*)?$' <<< "$next" || break
         t="$(ucurl "$next")"
@@ -174,13 +174,13 @@ get_tag() {
     t="$(ucurl "$1")"
     while :
     do
-        for j in $(hgrep 'div +class="contentRow.*"; a +href -data-user-id @p"'"$url"'%(href)a\n"' <<< "$t")
+        for j in $(hgrep 'div +class="contentRow.*"; a +href -data-user-id | "'"$url"'%(href)a\n"' <<< "$t")
         do
             [ "$(jobs | wc -l)" -gt "$maxprocs" ] && wait %%
             get_thread "$j" &
         done
 
-        next="$(hgrep 'div +class="block-outer block-outer--after"; a +class="pageNav-jump pageNav-jump--next" +href @p"'"$url"'%(href)a\n"' <<< "$t")"
+        next="$(hgrep 'div +class="block-outer block-outer--after"; a +class="pageNav-jump pageNav-jump--next" +href | "'"$url"'%(href)a\n"' <<< "$t")"
         echo "$next"
         grep -q '/page-[0-9]*$' <<< "$next" || break
         t="$(ucurl "$next")"
@@ -197,39 +197,39 @@ get_old_thread() {
     {
     echo "$1" #link
     echo "$id" #id
-    echo "$(hgrep 'div +class="titleBar.*"; h1 @p"%i\n", div +id="header"; h1 @p"%i\n"' <<< "$t" | sed ':x; s/<[^>]*>//g; $!{N;s/\n/ /;bx}')" #title
-    echo "$(hgrep 'p +id="pageDescription"; a +class="username" +href @p"%(href)a\n"' <<< "$t" | sed 's/^.*[/.]\([0-9]\+\)/\1/; s/[^0-9]$//')" #user_id
-    echo "$(hgrep 'p +id="pageDescription"; a +class="username" @p"%i\n"' <<< "$t")" #user
-    echo "$(hgrep 'p +id="pageDescription"; .* +class="DateTime" @p"%i\n"' <<< "$t")" #date
-    echo "$(hgrep 'span +class="crumbs"; span +itemprop="[a-z]*"; .* @M"<" @p"%i/"' <<< "$t")" #path
-    echo "$(hgrep 'ul +class="tagList"; a +class="tag" @p"%i|"' <<< "$t" | sed 's/<[^>]*>[^<]*<\/[^>]*>//g; s/|$//')" #tags
+    echo "$(hgrep 'div +class="titleBar.*"; h1 | "%i\n", div +id="header"; h1 | "%i\n"' <<< "$t" | sed ':x; s/<[^>]*>//g; $!{N;s/\n/ /;bx}')" #title
+    echo "$(hgrep 'p +id="pageDescription"; a +class="username" +href | "%(href)a\n"' <<< "$t" | sed 's/^.*[/.]\([0-9]\+\)/\1/; s/[^0-9]$//')" #user_id
+    echo "$(hgrep 'p +id="pageDescription"; a +class="username" | "%i\n"' <<< "$t")" #user
+    echo "$(hgrep 'p +id="pageDescription"; .* +class="DateTime" | "%i\n"' <<< "$t")" #date
+    echo "$(hgrep 'span +class="crumbs"; span +itemprop="[a-z]*"; .* @M"<" | "%i/"' <<< "$t")" #path
+    echo "$(hgrep 'ul +class="tagList"; a +class="tag" | "%i|"' <<< "$t" | sed 's/<[^>]*>[^<]*<\/[^>]*>//g; s/|$//')" #tags
 
     while :
     do
         for i in $(tr -d '\n\t' <<< "$t" | hgrep 'ol +id="messageList"; li +id="post-[0-9]*" +data-author @l[1]')
         do
             {
-            echo "$(hgrep 'li +data-author @l[0] @p"%(data-author)a\n"' <<< "$i")" #user
-            messageUserBlock="$(hgrep 'div +class="messageUserBlock.*" @p"%i\n"' <<< "$i")"
-            avatar="$(hgrep '.* +class="avatar.*"; img +src @p"'"$url"'/%(src)a\n"' <<< "$messageUserBlock" | head -n1)"
+            echo "$(hgrep 'li +data-author @l[0] | "%(data-author)a\n"' <<< "$i")" #user
+            messageUserBlock="$(hgrep 'div +class="messageUserBlock.*" | "%i\n"' <<< "$i")"
+            avatar="$(hgrep '.* +class="avatar.*"; img +src | "'"$url"'/%(src)a\n"' <<< "$messageUserBlock" | head -n1)"
             if [ -z "$avatar" ]
             then
-                echo "$(hgrep 'span +class="img m" +style @p"%(style)a\n"' <<< "$messageUserBlock" | sed 's#^.*/avatars/m/[0-9]*/##; s#\..*##')" #user_id
-                echo "$(hgrep 'span +class="img m" +style @p"'"$url"'%(style)a\n"' <<< "$messageUserBlock" | sed "s/?[0-9]*')//; s/background-image: url('/\//; s/')$//")" #avatar
+                echo "$(hgrep 'span +class="img m" +style | "%(style)a\n"' <<< "$messageUserBlock" | sed 's#^.*/avatars/m/[0-9]*/##; s#\..*##')" #user_id
+                echo "$(hgrep 'span +class="img m" +style | "'"$url"'%(style)a\n"' <<< "$messageUserBlock" | sed "s/?[0-9]*')//; s/background-image: url('/\//; s/')$//")" #avatar
             else
                 [[ "$avatar" =~ /([[:digit:]]*)\.[[:alpha:]]*?(\?.*)$ ]] && echo "${BASH_REMATCH[1]}" || echo
                 echo "${avatar%\?[[:digit:]]*}" #avatar
             fi
-            echo "$(hgrep 'h3 +class="userText"; em +class="userTitle.*" @p"%i\n"' <<< "$messageUserBlock")" #user_title
-            echo "$(hgrep 'h3 +class="userText"; em +class="userBanner.*"; .* @M"<" @p"%i\n"' <<< "$messageUserBlock" | sed '/^[ \t]*$/d')" #user_banner
-            echo "$(paste -d/ <(hgrep 'dt; .* @M"<" @p"%i\n"' <<< "$messageUserBlock") <(hgrep 'dd; .* @M"<" @p"%i\n"' <<< "$messageUserBlock") | sed ':x;$!{N;s/\n/|/;bx}')" #user_extra
-            t2="$(hgrep 'li +data-author @l[0] +id="post-[0-9]*" @p"%(id)a\n"' <<< "$i")"
+            echo "$(hgrep 'h3 +class="userText"; em +class="userTitle.*" | "%i\n"' <<< "$messageUserBlock")" #user_title
+            echo "$(hgrep 'h3 +class="userText"; em +class="userBanner.*"; .* @M"<" | "%i\n"' <<< "$messageUserBlock" | sed '/^[ \t]*$/d')" #user_banner
+            echo "$(paste -d/ <(hgrep 'dt; .* @M"<" | "%i\n"' <<< "$messageUserBlock") <(hgrep 'dd; .* @M"<" | "%i\n"' <<< "$messageUserBlock") | sed ':x;$!{N;s/\n/|/;bx}')" #user_extra
+            t2="$(hgrep 'li +data-author @l[0] +id="post-[0-9]*" | "%(id)a\n"' <<< "$i")"
             echo "${t2#post-}" #id
-            echo "$(hgrep 'div +class="messageContent"; article @p"%i\n"' <<< "$i")" #text
+            echo "$(hgrep 'div +class="messageContent"; article | "%i\n"' <<< "$i")" #text
             } | sed ':x;$!{N;s/\n/\t/;bx}'
         done
 
-        next="$(hgrep 'nav; a +class +href=".*/page-[0-9]*" @m"^[^0-9]*&gt;" @p"'"$url"'/%(href)a\n"' <<< "$t" | tail -n1)"
+        next="$(hgrep 'nav; a +class +href=".*/page-[0-9]*" @m"^[^0-9]*&gt;" | "'"$url"'/%(href)a\n"' <<< "$t" | tail -n1)"
         grep -q '/page-[0-9]*$' <<< "$next" || break
         t="$(ucurl "$next")"
     done
@@ -259,7 +259,7 @@ get_old_thread() {
 }
 
 get_old_category() {
-    for i in $(hgrep 'h3 +class="nodeTitle"; a -href=".\?#.*" +href @p"'"$url"'/%(href)a\n"' <&0)
+    for i in $(hgrep 'h3 +class="nodeTitle"; a -href=".\?#.*" +href | "'"$url"'/%(href)a\n"' <&0)
     do
         echo "$i"
         get_old_forum_tag "$i"
@@ -271,13 +271,13 @@ get_old_forum_tag() {
     t="$(ucurl "$1")"
     while :
     do
-        for j in $(hgrep 'li +id; div +class="titleText"; h3 +class="title"; a +href @p"'"$url"'/%(href)a\n"' <<< "$t")
+        for j in $(hgrep 'li +id; div +class="titleText"; h3 +class="title"; a +href | "'"$url"'/%(href)a\n"' <<< "$t")
         do
             [ "$(jobs | wc -l)" -gt "$maxprocs" ] && wait %%
             get_old_thread "$j" &
         done
 
-        next="$(hgrep 'nav; a +class +href=".*/page-[0-9]*" @m"^[^0-9]*&gt;" @p"'"$url"'/%(href)a\n"' <<< "$t" | tail -n1)"
+        next="$(hgrep 'nav; a +class +href=".*/page-[0-9]*" @m"^[^0-9]*&gt;" | "'"$url"'/%(href)a\n"' <<< "$t" | tail -n1)"
         echo "$next"
         grep -q '/page-[0-9]*$' <<< "$next" || break
         t="$(ucurl "$next")"
