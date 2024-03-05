@@ -1,6 +1,6 @@
 # xenforo-scraper
 
-A bash script for downloading xenforo forums in json.
+A bash script for scraping xenforo forums in json.
 
 ## Requirements
 
