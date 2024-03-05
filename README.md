@@ -1,4 +1,4 @@
-# xenforo
+# xenforo-scraper
 
 A bash script for downloading xenforo forums in json.
 
@@ -9,7 +9,7 @@ A bash script for downloading xenforo forums in json.
 
 ## Installation
     
-    install -m 755 xenforo /usr/bin
+    install -m 755 xenforo-scraper /usr/bin
 
 ## Supported links formats
 
@@ -43,26 +43,26 @@ Here's example of [thread](thread-example.json), [old-thread](old-thread-example
 
 ## Usage
 
-    xenforo [URL]...
+    xenforo-scraper [URL]...
 
 Script downloads pages of threads and users and writes them in files. Files are named by their id's, but user files start with 'm-'. Old format forums don't create user files.
 
 Download forum into current directory using 4 processes
 
-    xenforo -p 4 'https://forum.com/forums/name.19/'
+    xenforo-scraper -p 4 'https://forum.com/forums/name.19/'
 
 Download thread by irregular thread url into DIR 
 
-    xenforo -d DIR -t 'https://forum.com/abcdef/loop/'
+    xenforo-scraper -d DIR -t 'https://forum.com/abcdef/loop/'
 
 Download old format forum
 
-    xenforo -o 'https://forum.com/forums/jus.82/'
+    xenforo-scraper -o 'https://forum.com/forums/jus.82/'
 
 Download whole forum
 
-    xenforo -c 'https://forum.com/forums/'
+    xenforo-scraper -c 'https://forum.com/forums/'
 
 Get some help
 
-    xenforo -h
+    xenforo-scraper -h
