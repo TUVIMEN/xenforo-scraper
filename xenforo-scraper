@@ -52,7 +52,7 @@ get_thread() {
     [[ "$1" =~ ^http[s]?://([[:alnum:]-]+\.)+[[:alpha:]]+/(.*[./])?([[:digit:]]+)(/.*)?$ ]] || { echo "improper url - $1"; return; }
     local -r id="${BASH_REMATCH[3]}"
     [ -e "$id" ] && return
-    echo "$1"
+    echo "$1" >&2
     local t="$(ucurl -D- "$1")"
     local t2 cookies url_first_delimiter='?'
     [ -z "${1##*\?*}" ] && url_first_delimiter='&'
@@ -107,6 +107,7 @@ get_thread() {
 
         next="$(hgrep 'div +class="block-outer\( .*\)\?"; a +class="pageNav-jump pageNav-jump--next\( .*\)\?" +href | "'"$url"'%(href)a\n"' <<< "$t" | head -n1)"
         grep -Eq '/page-[0-9]*(\?.*)?/?(#.*)?$' <<< "$next" || break
+        echo "$next" >&2
         t="$(ucurl -b "$cookies" "$next")"
     done
     } | jq -RnMcs '
@@ -145,7 +146,7 @@ get_thread() {
 get_category() {
     for i in $(hgrep '.* +class="node-title"; a +href -href="/link-forums/.*" | "'"$url"'%(href)a\n"' <&0)
     do
-        echo "$i"
+        echo "$i" >&2
         get_forum "$i"
     done
 }
@@ -162,8 +163,8 @@ get_forum() {
         done
 
         next="$(hgrep 'div +class="block-outer\( .*\)\?"; a +class="pageNav-jump pageNav-jump--next\( .*\)\?" +href | "'"$url"'%(href)a\n"' <<< "$t" | head -n1)"
-        echo "$next"
         grep -Eq '/page-[0-9]*(\?.*)?/?(#.*)?$' <<< "$next" || break
+        echo "$next" >&2
         t="$(ucurl "$next")"
     done
     get_category <<< "$t"
@@ -181,8 +182,8 @@ get_tag() {
         done
 
         next="$(hgrep 'div +class="block-outer block-outer--after"; a +class="pageNav-jump pageNav-jump--next" +href | "'"$url"'%(href)a\n"' <<< "$t")"
-        echo "$next"
         grep -q '/page-[0-9]*$' <<< "$next" || break
+        echo "$next" >&2
         t="$(ucurl "$next")"
     done
 }
@@ -191,7 +192,7 @@ get_old_thread() {
     [[ "$1" =~ ^http[s]?://([[:alnum:]-]+\.)+[[:alpha:]]+/(.*[./])?([[:digit:]]+)[/]?$ ]] || { echo "improper url - $1"; return; }
     local -r id="${BASH_REMATCH[3]}"
     [ -e "$id" ] && return
-    echo "$1"
+    echo "$1" >&2
     local t="$(ucurl "$1")" t2 next messageUserBlock avatar
 
     {
@@ -231,6 +232,7 @@ get_old_thread() {
 
         next="$(hgrep 'nav; a +class +href=".*/page-[0-9]*" @m"^[^0-9]*&gt;" | "'"$url"'/%(href)a\n"' <<< "$t" | tail -n1)"
         grep -q '/page-[0-9]*$' <<< "$next" || break
+        echo "$next" >&2
         t="$(ucurl "$next")"
     done
     } | jq -RnMcs '
@@ -261,7 +263,7 @@ get_old_thread() {
 get_old_category() {
     for i in $(hgrep 'h3 +class="nodeTitle"; a -href=".\?#.*" +href | "'"$url"'/%(href)a\n"' <&0)
     do
-        echo "$i"
+        echo "$i" >&2
         get_old_forum_tag "$i"
     done
 }
@@ -278,7 +280,7 @@ get_old_forum_tag() {
         done
 
         next="$(hgrep 'nav; a +class +href=".*/page-[0-9]*" @m"^[^0-9]*&gt;" | "'"$url"'/%(href)a\n"' <<< "$t" | tail -n1)"
-        echo "$next"
+        echo "$next" >&2
         grep -q '/page-[0-9]*$' <<< "$next" || break
         t="$(ucurl "$next")"
     done

@@ -13,14 +13,14 @@ A bash script for scraping xenforo forums in json.
 
 ## Supported links formats
 
-    http?(s)://forum.com/threads/*
-    http?(s)://forum.com/forum[s]/threads/*
-    http?(s)://forum.com/*/threads/*
-    http?(s)://forum.com/forums/*
-    http?(s)://forum.com/forum[s]/forums/*
-    http?(s)://forum.com/*/forums/*
-    http?(s)://forum.com/tags/*
-    http?(s)://forum.com/*/tags/*
+    http(s)?://forum.com/threads/.*
+    http(s)?://forum.com/forum(s)?/threads/.*
+    http(s)?://forum.com/.*/threads/.*
+    http(s)?://forum.com/forums/.*
+    http(s)?://forum.com/forum(s)?/forums/.*
+    http(s)?://forum.com/.*/forums/.*
+    http(s)?://forum.com/tags/.*
+    http(s)?://forum.com/.*/tags/.*
 
 
 ## Json format
