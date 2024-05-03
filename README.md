@@ -4,7 +4,7 @@ A bash script for scraping xenforo forums in json.
 
 ## Requirements
 
- - [hgrep](https://github.com/TUVIMEN/hgrep)
+ - [reliq](https://github.com/TUVIMEN/reliq)
  - [jq](https://github.com/stedolan/jq)
 
 ## Installation
@@ -22,30 +22,43 @@ A bash script for scraping xenforo forums in json.
     http(s)?://forum.com/tags/.*
     http(s)?://forum.com/.*/tags/.*
 
-
 ## Json format
 
 Here's example of [thread](thread-example.json), [old-thread](old-thread-example.json) and [user](user-example.json).
 
-## Supported forums examples
+## Supported 2.x forums examples
     
     https://forums.freddyshouse.com/
     https://www.ignboards.com/
     https://www.cyclechat.net/
     https://zroadster.org/
     https://www.urban75.net/forums/
+    https://www.1911forum.com/forums/
+    https://www.ascentforums.com/
+    https://www.alfaowner.com/forums/
+    https://www.horseforum.com/forums/
+    https://www.gunboards.com/forums/
+    https://www.mothering.com/forums/
+    https://forum-mechanika.pl/
+    https://www.aclassclub.co.uk/forums/
+    https://forum.literotica.com/
+    https://forums.mangadex.org/
+    https://www.mazda6club.com/forums/
+    https://www.metaldetectingforum.com/index.php
 
-## Supported old forums examples
+## Supported 1.x forums examples
 
-    https://forums.whyweprotest.net/
-    https://www.forumhouse.ru/forums
     https://www.bigsoccer.com/forums/
+    https://www.forumhouse.ru/forums
+    https://forums.whyweprotest.net/
 
 ## Usage
 
     xenforo-scraper [URL]...
 
-Script downloads pages of threads and users and writes them in files. Files are named by their id's, but user files start with 'm-'. Old format forums don't create user files.
+Script downloads pages of threads and users and writes them in files. Files are named by their id's, but user files start with 'm-'. For 1.x forums script doesn't create user files.
+
+By default script assumes 2.x version, for using 1.x version one must specify -o flags, as it is an old format.
 
 Download forum into current directory using 4 processes
 
@@ -55,7 +68,7 @@ Download thread by irregular thread url into DIR
 
     xenforo-scraper -d DIR -t 'https://forum.com/abcdef/loop/'
 
-Download old format forum
+Download old format, 1.x forum
 
     xenforo-scraper -o 'https://forum.com/forums/jus.82/'
 
