@@ -1,8 +1,8 @@
 {
   "link": "https://forums.forum.com/threads/loop.34878/",
-  "id": "34878",
+  "id": 34878,
   "title": "LOOP",
-  "user_id": "382",
+  "user_id": 382,
   "user": "User",
   "date": "Feb 12, 2016",
   "path": "Home/Forums/forum/",
@@ -10,17 +10,17 @@
   "posts": [
     {
       "user": "User",
-      "user_id": "382",
+      "user_id": 382,
       "user_title": "Member",
       "user_banner": "",
       "user_extra": [],
       "avatar": "https://forums.forum.com/data/avatars/m/38/382.jpg",
-      "id": "12791",
+      "id": 12791,
       "text": "<blockquote class=\"messageText ugc baseHtml\"><img src=\"attachments/237837_400x500-jpg.12791/\" alt=\"237837_400x500.jpg\" class=\"bbCodeImage LbImage\" /></blockquote>#text"
     },
     {
       "user": "User2",
-      "user_id": "34",
+      "user_id": 34,
       "user_title": "",
       "user_banner": "Global Moderator",
       "user_extra": [
@@ -28,7 +28,7 @@
         {"name":"Location:","value":"Россия"}
       ],
       "avatar": "https://forums.forum.com/data/avatars/m/34/34.jpg",
-      "id": "12792",
+      "id": 12792,
       "text": "<blockquote class=\"messageText ugc baseHtml\">WWP<br /><img src=\"attachments/302430-gif.12792/\" alt=\"302430.gif\" class=\"bbCodeImage LbImage\" /></blockquote>#text"
     }
   ]

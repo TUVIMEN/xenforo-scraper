@@ -19,35 +19,24 @@ get_user() {
     [ -e "m-$id" ] && return
     echo "$1" >&2
     local -r t="$(ucurl -b "$2" "$1" | jq -r '.html.content')"
+    local background
 
     {
-    echo "$id"
-    echo "$(sed -n '/<div class="memberProfileBanner memberTooltip-header.*url(/{s#.*url(##;s#^/[^/]#'"$url"'\0#;s#^//#https://#;s/?.*//;p;q}' <<< "$t")" #background
+    background="$(sed -n '/<div class="memberProfileBanner memberTooltip-header.*url(/{s#.*url(##;s#^/[^/]#'"$url"'\0#;s#^//#https://#;s/?.*//;p;q}' <<< "$t")"
+    echo "{\"id\":$id,\"background\":\"$background\"}"
     reliq '
-        . a href=b>/misc/location-info | "%i\n",
-        . img src | "%(src)v\n" / sed "s#^/[^/]#'"$url"'\0#;s#^//#https://#;s/?.*//; q",
-        . dl .pairs .pairs--inline m@">Joined<"; time datetime | "%(datetime)v\n",
-        . dl .pairs .pairs--inline m@">Last seen<"; time datetime | "%(datetime)v\n",
-        . span .userTitle | "%i\n",
-        . h4 .memberTooltip-name; a; * c@[0] | "%i\n",
-        . em; a href | "%(href)v\n",
-        . dl m@"<dt>Messages</dt>"; dd; * c@[0] | "%i\n" / sed "/[0-9]/{s/[,\t ]//g;p;q}" "n",
-        . dl m@B>"<dt.*>Reaction.*</dt>"; dd; * c@[0] | "%i\n" / sed "/[0-9]/{s/[,\t ]//g;p;q}" "n",
-        . dl m@B>"<dt .*title=\".*\">Points</dt>"; dd; * c@[0] | "%i\n" / sed "/[0-9]/{s/[,\t ]//g;p;q}",
+        .location a href=b>/misc/location-info | "%i",
+        .avatar img src | "%(src)v" / sed "s#^/[^/]#'"$url"'\0#;s#^//#https://#;s/?.*//; q",
+        .joined dl .pairs .pairs--inline m@">Joined<"; time datetime | "%(datetime)v",
+        .lastseen dl .pairs .pairs--inline m@">Last seen<"; time datetime | "%(datetime)v",
+        .title span .userTitle | "%i",
+        .name h4 .memberTooltip-name; a; * c@[0] | "%i",
+        .forum em; a href | "%(href)v",
+        .messages dl m@"<dt>Messages</dt>"; dd; * c@[0] | "%i\n" / sed "/[0-9]/{s/[,\t ]//g;p;q}" "n" tr "\n",
+        .reactionscore dl m@B>"<dt.*>Reaction.*</dt>"; dd; * c@[0] | "%i\n" / sed "/[0-9]/{s/[,\t ]//g;p;q}" "n" tr "\n",
+        .points dl m@B>"<dt .*title=\".*\">Points</dt>"; dd; * c@[0] | "%i\n" / sed "/[0-9]/{s/[,\t ]//g;p;q}" tr "\n"
     ' <<< "$t"
-    } | jq -RnMc '
-        .["id"]=input |
-        .["background"]=input |
-        .["location"]=input |
-        .["avatar"]=input |
-        .["joined"]=input |
-        .["lastseen"]=input |
-        .["title"]=input |
-        .["name"]=input |
-        .["forum"]=input |
-        .["messages"]=input |
-        .["reactionscore"]=input |
-        .["points"]=input' > "m-$id"
+    } | jq -srcM '.[0]+.[1]' > "m-$id"
 }
 
 get_thread() {
@@ -62,25 +51,28 @@ get_thread() {
     local next
 
     {
-    echo "$1" #link
-    echo "$id" #id
+    echo "{\"link\":\"$1\",\"id\":$id}"
     reliq '
-        . h1 {
+        .title h1 {
             h1 .p-title-value | "%i\n",
             h1 qid="page-header" | "%i\n",
             h1 .MessageCard__thread-title | "%i\n"
         } / sed ":x; s/<[^>]*>//g; $!{N;s/\n/ /;bx}",
 
-        . div .p-description; * data-user-id | "%(data-user-id)v\n",
-        . div .p-description; * data-user-id; * c@[0] | "%i\n",
-        . div .p-description; time datetime | "%(datetime)v\n",
-        . ul .p-breadcrumbs -.p-breadcrumbs--bottom; span | "%i/" / echo "" "\n",
-        . a class=b>tagItem | "%i\n" / sed ":x; s/\t//g; /^$/d; $!{N;s/\n/|/;bx}; s/|$//; s/|\+/|/g",
-        . form data-xf-init="poll-block ajax-submit"; h2 .block-header | "%i\n" / sed "s/\t//g; s/<[^>]*>//g; s/^ *//; s/ *$//; /^$/d;",
-        . form data-xf-init="poll-block ajax-submit"; li; {
-            . h3 .pollResult-response | "%i\n",
-            . span .pollResult-votes | "%i\n" / sed "s/\t//g; s/<[^>]*>//g; s/^ *//; s/ *$//; /^$/d; s/^.* //"
-        } | tr "\n" "\a" echo "" "\t" / echo "" "\n"' <<< "$t"
+        div .p-description; {
+            .user_id.u * data-user-id | "%(data-user-id)v",
+            .user * data-user-id; * c@[0] | "%i",
+            .date time datetime | "%(datetime)v",
+        },
+        .path.a ul .p-breadcrumbs -.p-breadcrumbs--bottom; span | "%i\n",
+        .tags.a("|") a class=b>tagItem | "%i\n" / sed ":x; s/\t//g; /^$/d; $!{N;s/\n/|/;bx}; s/|$//; s/|\+/|/g" tr "\n",
+        .poll form data-xf-init="poll-block ajax-submit"; {
+            .title h2 .block-header | "%i\n" / sed "s/\t//g; s/<[^>]*>//g; s/^ *//; s/ *$//; /^$/d;",
+            .answers li; {
+                .option h3 .pollResult-response | "%i",
+                .votes.u span .pollResult-votes | "%i" / sed "s/\t//g; s/<[^>]*>//g; s/^ *//; s/ *$//; /^$/d; s/^.* //"
+            } |
+        }' <<< "$t"
     local xfToken="$(reliq 'html data-csrf | "%(data-csrf)v\n"' <<< "$t")"
     [ -z "$xfToken" ] && xfToken="$(reliq 'input name="_xfToken" value | "%(value)v\n" / line [1]' <<< "$t")" && \
     [ -z "$xfToken" ] && xfToken="$(sed -n "/^[ \t]*csrf: '[0-9]*,[a-f0-9]*',/{s/.*: '//;s/'.*//;p;q}" <<< "$t")"
@@ -91,22 +83,32 @@ get_thread() {
         do
             {
             reliq '
-                . h4 class=b>message-name; * data-user-id | "%(data-user-id)v\n",
-                . div .MessageCard__avatar; a data-user-id | "%(data-user-id)v\n",
+                .user_id.u {
+                    h4 class=b>message-name; * data-user-id | "%(data-user-id)v",
+                    div .MessageCard__avatar; a data-user-id | "%(data-user-id)v"
+                },
 
-                . h4 class=b>message-name; * c@[0] | "%i\n",
-                . * .MessageCard__user-info__name; * c@[0] | "%i\n",
+                .user {
+                    h4 class=b>message-name; * c@[0] | "%i",
+                    * .MessageCard__user-info__name; * c@[0] | "%i"
+                },
 
-                . E>(span|div) #B>post-[0-9]* | "%(id)v\n" / sed "s/^post-//;q",
+                .id.u E>(span|div) #B>post-[0-9]* | "%(id)v" / sed "s/^post-//;q",
 
-                . * class=b>message-attribution-main; time datetime | "%(datetime)v\n",
-                . * .MessageCard__date-created; time datetime .u-dt | "%(datetime)v\n" / line [1],
+                .date {
+                    * class=b>message-attribution-main; time datetime | "%(datetime)v",
+                    * .MessageCard__date-created; [0] time datetime .u-dt | "%(datetime)v"
+                },
 
-                . article class=b>message-body; div .bbWrapper | "%i\n",
-                . div .MessageCard__content-inner; div .bbWrapper | "%i\n",
+                .text {
+                    article class=b>message-body; div .bbWrapper | "%i",
+                    div .MessageCard__content-inner; div .bbWrapper | "%i"
+                },
 
-                . ul .attachmentList | "%i\n",
-                . div #signature-content-wrapper; div .bbWrapper | "%i\n"
+                .attachments.a {
+                    ul .attachmentList | "%i\n",
+                    div #signature-content-wrapper; div .bbWrapper | "%i\n"
+                }
             ' <<< "$i"
 
             [ "$nousers" -eq '0' ] && get_user "$(reliq 'h4 class=b>message-name; a data-user-id href | "'"$url"'%(href)v'"$url_first_delimiter"'tooltip=true&_xfWithData=1&_xfToken='"$xfToken"'&_xfResponseType=json\n", div .MessageCard__avatar; a data-user-id href | "'"$url"'%(href)v'"$url_first_delimiter"'tooltip=true&_xfWithData=1&_xfToken='"$xfToken"'&_xfResponseType=json\n"' <<< "$i")" "$cookies"
@@ -118,19 +120,19 @@ get_thread() {
                 then
                     t2="$t2${url_first_delimiter}_xfRequestUri=&_xfWithData=1&_xfToken=$xfToken&_xfResponseType=json"
                     echo "$t2" >&2
-                    ucurl -b "$cookies" "$t2" | jq -r '.html.content' | tr -d '\n\t' | reliq '. div .contentRow; {
-                        . * .username data-user-id | "%(data-user-id)v\n",
-                        . * .username data-user-id; * c@[0] | "%i\n",
-                        . time .u-dt datetime | "%(datetime)v\n",
-                        . span .reaction; img title | "%(title)v\n"
-                    } | tr "\n" "|" echo "" "^" / echo "" "\n"'
+                    ucurl -b "$cookies" "$t2" | jq -r '.html.content' | tr -d '\n\t' | reliq '.reactions div .contentRow; {
+                        .user_id.u * .username data-user-id | "%(data-user-id)v",
+                        .user * .username data-user-id; * c@[0] | "%i",
+                        .date time .u-dt datetime | "%(datetime)v",
+                        .reaction span .reaction; img title | "%(title)v"
+                    } |'
                 else
-                    echo
+                    echo '{"reactions":[]}'
                 fi
             else
-                echo
+                echo '{"reactions":[]}'
             fi
-            } | paste -sd '\t'
+            } | jq -srcM '.[0] + .[1]'
         done
 
         next="$(reliq 'div .block-outer; a .pageNav-jump .pageNav-jump--next href | "'"$url"'%(href)v\n" / line [1]' <<< "$t")"
@@ -138,37 +140,7 @@ get_thread() {
         echo "$next" >&2
         t="$(ucurl -b "$cookies" "$next")"
     done
-    } | jq -RnMcs '
-        (inputs | split("\n")) as $lines |
-        .["link"]=$lines[0] |
-        .["id"]=$lines[1] |
-        .["title"]=$lines[2] |
-        .["user_id"]=$lines[3] |
-        .["user"]=$lines[4] |
-        .["date"]=$lines[5] |
-        .["path"]=$lines[6] |
-        .["tags"]=($lines[7] | split("|")) |
-        .["poll"]=($lines[8:10] | {
-            ("title"):.[0],
-            ("answers"):(.[1] | split("\t")[:-2] | map(split("")[:-1] | {
-                ("option"):.[0],
-                ("votes"):.[1]
-            }))
-        }) |
-        .["posts"]=($lines[10:-1] | map(split("\t") | {
-            ("user_id"):(.[0]+.[1]),
-            ("user"):(.[2]+.[3]),
-            ("id"):.[4],
-            ("date"):(.[5]+.[6]),
-            ("text"):(.[7]+.[8]),
-            ("attachments"):(.[9]+.[10]),
-            ("reactions"):(.[11] | split("^")[:-1] | map(split("|")[:-1] | {
-                ("user_id"):.[0],
-                ("user"):.[1],
-                ("date"):.[2],
-                ("reaction"):.[3]
-            }))
-        }))' > "$id"
+    } | jq -srcM '.[2:] as $posts | .[0] + .[1] | .["posts"]=$posts' > "$id"
 }
 
 get_category() {
@@ -225,15 +197,16 @@ get_old_thread() {
     local t="$(ucurl "$1")" t2 next messageUserBlock avatar
 
     {
-    echo "$1" #link
-    echo "$id" #id
+    echo "{\"link\":\"$1\",\"id\":\"$id\"}"
     reliq '
-        . div class=b>titleBar; h1 | "%i\n", div #header; h1 | "%i\n" / sed ":x; s/<[^>]*>//g; $!{N;s/\n/ /;bx}",
-        . p #pageDescription; a .username href | "%(href)v\n" / sed "s/^.*[\/.]\([0-9]\+\)/\1/; s/[^0-9]$//",
-        . p #pageDescription; a .username | "%i\n",
-        . p #pageDescription; * .DateTime | "%i\n",
-        . span .crumbs; span itemprop=B>"[a-z]*"; * c@[0] | "%i/" / echo "" "\n",
-        . ul .tagList; a .tag | "%i|" / sed "s/<[^>]*>[^<]*<\/[^>]*>//g; s/|$//" echo "" "\n"
+        .title { div class=b>titleBar; h1 | "%i", div #header; h1 | "%i" / sed ":x; s/<[^>]*>//g; $!{N;s/\n/ /;bx}" },
+        p #pageDescription; {
+            .user_id.u a .username href | "%(href)v" / sed "s/^.*[\/.]\([0-9]\+\)/\1/; s/[^0-9]$//",
+            .user a .username | "%i",
+            .date * .DateTime | "%i"
+        },
+        .path.a span .crumbs; span itemprop=B>"[a-z]*"; * c@[0] | "%i\n",
+        .tags.a("|") ul .tagList; a .tag | "%i|" / sed "s/<[^>]*>[^<]*<\/[^>]*>//g; s/|$//"
     ' <<< "$t"
 
     while :
@@ -241,27 +214,33 @@ get_old_thread() {
         for i in $(tr -d '\n\t' <<< "$t" | reliq 'ol #messageList; li #E>post-[0-9]* data-author l@[1]')
         do
             {
-            echo "$(reliq 'li data-author l@[0] | "%(data-author)v\n"' <<< "$i")" #user
             messageUserBlock="$(reliq 'div class=b>messageUserBlock | "%i\n"' <<< "$i")"
             avatar="$(reliq '* class=b>avatar; img src | "'"$url"'/%(src)v\n" / line [1]' <<< "$messageUserBlock")"
             if [ -z "$avatar" ]
             then
-                echo "$(reliq 'span class="img m" style | "%(style)v\n" / sed "s#^.*/avatars/m/[0-9]*/##; s#\..*##"' <<< "$messageUserBlock")" #user_id
-                echo "$(reliq 'span class="img m" style | "'"$url"'%(style)v\n" / sed "s/?[0-9]*'\'')//; s/background-image: url('\''/\//; s/'\'')$//"' <<< "$messageUserBlock")" #avatar
+                reliq '
+                    .user_id.u span class="img m" style | "%(style)v" / sed "s#^.*/avatars/m/[0-9]*/##; s#\..*##",
+                    .avatar span class="img m" style | "'"$url"'%(style)v" / sed "s/?[0-9]*'\'')//; s/background-image: url('\''/\//; s/'\'')$//"
+                ' <<< "$messageUserBlock"
             else
-                [[ "$avatar" =~ /([[:digit:]]*)\.[[:alpha:]]*?(\?.*)$ ]] && echo "${BASH_REMATCH[1]}" || echo
-                echo "${avatar%\?[[:digit:]]*}" #avatar
+                t2=""
+                [[ "$avatar" =~ /([[:digit:]]*)\.[[:alpha:]]*?(\?.*)$ ]] && t2="${BASH_REMATCH[1]}"
+                echo "{\"user_id\":\"$t2\",\"avatar\":\"${avatar%\?[[:digit:]]*}\"}"
             fi
-            echo "$(reliq 'h3 .userText; em class=b>userTitle | "%i\n"' <<< "$messageUserBlock")" #user_title
-            echo "$(reliq 'h3 .userText; em class=b>userBanner; * c@[0] | "%i\n" / sed "/^[ \t]*$/d"' <<< "$messageUserBlock")" #user_banner
-            reliq '. dl; {
-                    . dt; * c@[0] | "%i\n",
-                    . dd; * c@[0] | "%i\n"
-                } | tr "\n" "/" echo "" "|" / echo "" "\n"
-            ' <<< "$messageUserBlock" #user_extra
-            echo "$(reliq 'li data-author l@[0] #B>post-[0-9]* | "%(id)v\n" / sed "s/^post-//"' <<< "$i")" #id
-            echo "$(reliq 'div .messageContent; article | "%i\n"' <<< "$i")" #text
-            } | sed ':x;$!{N;s/\n/\t/;bx}'
+            reliq '
+            h3 .userText; {
+                .user_title em class=b>userTitle | "%i",
+                .user_banner em class=b>userBanner; * c@[0] | "%i" / sed "/^[ \t]*$/d",
+            },
+            .user_extra dl; {
+                .name dt; * c@[0] | "%i",
+                .value dd; * c@[0] | "%i"
+            } |' <<< "$messageUserBlock"
+            reliq '
+                .user li data-author l@[0] | "%(data-author)v",
+                .id.u li data-author l@[0] #B>post-[0-9]* | "%(id)v" / sed "s/^post-//",
+                .text div .messageContent; article | "%i"' <<< "$i"
+            } | jq -srcM '.[0] + .[1] + .[2]'
         done
 
         next="$(reliq 'nav; a class href=Be>"/page-[0-9]*" m@B>"^[^0-9]*&gt;" | "'"$url"'/%(href)v\n" / line [-]' <<< "$t")"
@@ -269,29 +248,7 @@ get_old_thread() {
         echo "$next" >&2
         t="$(ucurl "$next")"
     done
-    } | jq -RnMcs '
-        (inputs | split("\n")) as $lines |
-        .["link"]=$lines[0] |
-        .["id"]=$lines[1] |
-        .["title"]=$lines[2] |
-        .["user_id"]=$lines[3] |
-        .["user"]=$lines[4] |
-        .["date"]=$lines[5] |
-        .["path"]=$lines[6] |
-        .["tags"]=($lines[7] | split("|")) |
-        .["posts"]=($lines[8:-1] | map(split("\t") | {
-            ("user"):.[0],
-            ("user_id"):.[1],
-            ("avatar"):.[2],
-            ("user_title"):.[3],
-            ("user_banner"):.[4],
-            ("user_extra"):(.[5] | split("|")[:-1] | map(split("/")[:-1] | {
-                ("name"):.[0],
-                ("value"):.[1]
-            })),
-            ("id"):.[6],
-            ("text"):.[7]
-        }))' > "$id"
+    } | jq -srcM '.[2:] as $posts | .[0] + .[1] | .["posts"]=$posts' > "$id"
 }
 
 get_old_category() {
