@@ -1,3 +1,7 @@
+# Archive
+
+Any further development has been transfered to [forumscraper](https://github.com/TUVIMEN/forumscraper).
+
 # xenforo-scraper
 
 A bash script for scraping xenforo forums in json.
@@ -8,7 +12,7 @@ A bash script for scraping xenforo forums in json.
  - [jq](https://github.com/stedolan/jq)
 
 ## Installation
-    
+
     install -m 755 xenforo-scraper /usr/bin
 
 ## Supported links formats
@@ -27,7 +31,7 @@ A bash script for scraping xenforo forums in json.
 Here's example of [thread](thread-example.json), [old-thread](old-thread-example.json) and [user](user-example.json).
 
 ## Supported 2.x forums examples
-    
+
     https://forums.freddyshouse.com/
     https://www.ignboards.com/
     https://www.cyclechat.net/
@@ -64,7 +68,7 @@ Download forum into current directory using 4 processes
 
     xenforo-scraper -p 4 'https://forum.com/forums/name.19/'
 
-Download thread by irregular thread url into DIR 
+Download thread by irregular thread url into DIR
 
     xenforo-scraper -d DIR -t 'https://forum.com/abcdef/loop/'
 
